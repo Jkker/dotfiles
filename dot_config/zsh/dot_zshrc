@@ -1,4 +1,4 @@
-# # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# # Enable Powerlevel10k instant prompt. Should stay close to the top of .zshrc.
 () { [[ -r $1 ]] && source $1 } ${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-$USERNAME.zsh
 
 
@@ -14,6 +14,7 @@ fi
 # mise
 export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/mise.yaml"
 export MISE_EXPERIMENTAL=1
+znap eval mise 'mise activate zsh' # Activate mise zsh integration
 
 # 1. Download Znap (if not exists)
 [[ -f ~/app/zsh/zsh-snap/znap.zsh ]] || git clone --depth 1 -- \
@@ -21,6 +22,8 @@ export MISE_EXPERIMENTAL=1
 source ~/app/zsh/zsh-snap/znap.zsh
 
 # 2. Plugins
+znap eval zoxide 'zoxide init zsh'
+
 znap source marlonrichert/zsh-autocomplete
 
 znap clone zsh-users/zsh-completions ohmyzsh/ohmyzsh
@@ -35,9 +38,8 @@ ZSH_AUTOSUGGEST_STRATEGY=( history )
 znap source zsh-users/zsh-autosuggestions
 
 # 3. Binary Tools
-znap eval zoxide 'zoxide init zsh'
-znap eval mise 'mise activate zsh'
-znap eval carapace 'carapace _carapace'
+# znap eval carapace 'carapace _carapace'
+znap eval mise 'mise completions zsh'
 znap eval chezmoi 'chezmoi completion zsh'
 znap source g-plane/pnpm-shell-completion pnpm-shell-completion.plugin.zsh
 if [[ ! -f ~[g-plane/pnpm-shell-completion]/pnpm-shell-completion ]]; then
@@ -47,9 +49,9 @@ fi
 # 4. Settings & Configuration
 
 # History
-HISTFILE="$HOME/.zsh_history"
-HISTSIZE=50000
-SAVEHIST=10000
+HISTFILE="$ZDOTDIR/.zsh_history"
+HISTSIZE=100000
+SAVEHIST=$HISTSIZE
 setopt EXTENDED_HISTORY          # Write the history file in the ':start:elapsed;command' format.
 setopt SHARE_HISTORY             # Share history between all sessions.
 setopt HIST_EXPIRE_DUPS_FIRST    # Expire a duplicate event first when trimming history.
@@ -99,19 +101,13 @@ function copy() {
 alias fr="fresh"
 alias lzd="lazydocker"
 alias lzg="lazygit"
-
+alias cz="chezmoi"
+alias mx="mise exec --"
+alias del='gtrash put'
 if command -v eza >/dev/null 2>&1; then
   alias ls='eza --group-directories-first --icons=auto'
   alias tree='ls --tree'
-else
-  alias ls='ls --color=auto'
 fi
-
-if command -v gtrash >/dev/null 2>&1; then
-  alias del='gtrash put'
-fi
-
-alias grep='grep --color=auto'
 
 # yazi
 function y() {
@@ -125,6 +121,7 @@ function y() {
 # NPM Aliases (with ni)
 alias pnpx="pnpm dlx"
 alias pp="pnpm"
+alias ppab="pnpm approve-builds"
 alias ni="pnpm install"
 alias nid="pnpm install -D"
 function nidt() {
@@ -159,16 +156,12 @@ alias nrl="nr lint"
 alias nrt="nr typecheck"
 alias nd="nr dev"
 alias ns="nr start"
-alias ppab="pnpm approve-builds"
-alias vt="xx vitest"
+alias vt="pnpm vitest"
 alias gcan="git commit -a --amend --no-edit"
-alias vn="xx vite-node"
-alias v="xx vite-node"
-alias eslint="xx eslint"
-alias prettier="xx prettier"
+alias vn="pnpx vite-node"
 alias npk="rm -rf node_modules package-lock.json yarn.lock pnpm-lock.yaml **/node_modules"
 
-# app/GitHub Aliases
+# git Aliases
 alias gcl="gh repo clone"
 alias gvw="gh repo view --web"
 alias gcm="git commit -m"
@@ -180,12 +173,9 @@ alias gsta="git stash push --include-untracked"
 
 # Python Aliases
 alias py="python"
-alias av=". .venv/bin/activate"
-alias dv="deactivate"
 
 # ZSH Aliases
-alias sz=". $ZDOTDIR/.zshrc"
-alias cz="$EDITOR $ZDOTDIR/.zshrc"
+alias sz="exec zsh"
 alias gy="gemini -y"
 
 # Editor Configuration
@@ -237,6 +227,5 @@ fi
 
 # Load p10k prompt
 znap source romkatv/powerlevel10k powerlevel10k.zsh-theme
-# To customize prompt, run `p10k configure` or edit ~/.config/zsh/.p10k.zsh.
-[[ ! -f ~/.config/zsh/.p10k.zsh ]] || source ~/.config/zsh/.p10k.zsh
+[[ ! -f $ZDOTDIR/.p10k.zsh ]] || source $ZDOTDIR/.p10k.zsh
 
