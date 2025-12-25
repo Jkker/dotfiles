@@ -25,65 +25,59 @@ log_success() { echo -e "\033[0;32m[SUCCESS]\033[0m $(date +'%Y-%m-%dT%H:%M:%S%z
 # --- 1. Base Setup ---
 export DEBIAN_FRONTEND=noninteractive
 
-HAVE_SUDO=false
-if sudo -n true 2>/dev/null || [ "$EUID" -eq 0 ]; then
-	HAVE_SUDO=true
+# --- WSL Specific Setup ---
+if [ "$IS_WSL" = true ]; then
+	echo "WSL: Configuring passwordless sudo for $(whoami)..."
+	echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/$(whoami) && sudo chmod 0440 /etc/sudoers.d/$(whoami)
 fi
 
-if [ "$HAVE_SUDO" = true ]; then
-	# --- WSL Specific Setup ---
-	if [ "$IS_WSL" = true ]; then
-		echo "WSL: Configuring passwordless sudo for $(whoami)..."
-		echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/$(whoami) && sudo chmod 0440 /etc/sudoers.d/$(whoami)
+sudo apt-get update -qq
+sudo apt-get upgrade -y -qq -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\"
+
+# --- Package Installation ---
+PKG_LIST=(
+	"build-essential"
+	"curl"
+	"ca-certificates"
+	"unattended-upgrades"
+	"apt-listchanges"
+	"apt-transport-https"
+	"lsb-release"
+	"gnupg"
+	"ffmpeg"
+	"git"
+	"graphviz"
+	"htop"
+	"imagemagick"
+	"nmap"
+	"sqlite3"
+	"tesseract-ocr"
+	"unzip"
+	"wget"
+	"zip"
+	"zsh"
+)
+
+echo "Installing APT packages..."
+sudo apt-get install -y -qq "${PKG_LIST[@]}"
+
+# --- Shell Setup ---
+CURRENT_SHELL_PATH=$(getent passwd "$USER" | cut -d: -f7 2>/dev/null || echo $SHELL)
+TARGET_SHELL_PATH=$(command -v zsh)
+
+if [ -n "$TARGET_SHELL_PATH" ] && [ "$CURRENT_SHELL_PATH" != "$TARGET_SHELL_PATH" ]; then
+	log_info "Changing default shell to zsh..."
+	if sudo -n true 2>/dev/null; then
+		sudo chsh -s "$TARGET_SHELL_PATH" "$USER" || log_warn "Failed to change shell. Try: chsh -s $TARGET_SHELL_PATH"
+	else
+		# Try without sudo
+		chsh -s "$TARGET_SHELL_PATH" || log_warn "Failed to change shell. Try manually: chsh -s $TARGET_SHELL_PATH"
 	fi
+fi
 
-	sudo apt-get update -qq
-	sudo apt-get upgrade -y -qq -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\"
-
-	# --- Package Installation ---
-	PKG_LIST=(
-		"build-essential"
-		"curl"
-		"ca-certificates"
-		"unattended-upgrades"
-		"apt-listchanges"
-		"apt-transport-https"
-		"lsb-release"
-		"gnupg"
-		"ffmpeg"
-		"git"
-		"graphviz"
-		"htop"
-		"imagemagick"
-		"nmap"
-		"sqlite3"
-		"tesseract-ocr"
-		"unzip"
-		"wget"
-		"zip"
-		"zsh"
-	)
-
-	echo "Installing APT packages..."
-	sudo apt-get install -y -qq "${PKG_LIST[@]}"
-
-	# --- Shell Setup ---
-	CURRENT_SHELL_PATH=$(getent passwd "$USER" | cut -d: -f7 2>/dev/null || echo $SHELL)
-	TARGET_SHELL_PATH=$(command -v zsh)
-
-	if [ -n "$TARGET_SHELL_PATH" ] && [ "$CURRENT_SHELL_PATH" != "$TARGET_SHELL_PATH" ]; then
-		log_info "Changing default shell to zsh..."
-		if sudo -n true 2>/dev/null; then
-			sudo chsh -s "$TARGET_SHELL_PATH" "$USER" || log_warn "Failed to change shell. Try: chsh -s $TARGET_SHELL_PATH"
-		else
-			# Try without sudo
-			chsh -s "$TARGET_SHELL_PATH" || log_warn "Failed to change shell. Try manually: chsh -s $TARGET_SHELL_PATH"
-		fi
-	fi
-
-	# Security: Unattended Upgrades
-	log_info "Configuring Unattended Upgrades..."
-	cat <<EOF | sudo tee /etc/apt/apt.conf.d/51unattended-upgrades-local >/dev/null
+# Security: Unattended Upgrades
+log_info "Configuring Unattended Upgrades..."
+cat <<EOF | sudo tee /etc/apt/apt.conf.d/51unattended-upgrades-local >/dev/null
 Unattended-Upgrade::Allowed-Origins {
     "\\\${distro_id}:\\\${distro_codename}";
     "\\\${distro_id}:\\\${distro_codename}-security";
@@ -94,48 +88,38 @@ Unattended-Upgrade::Package-Blacklist {};
 Unattended-Upgrade::Automatic-Reboot "false";
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 EOF
-	sudo systemctl enable --now unattended-upgrades
+sudo systemctl enable --now unattended-upgrades
 
-	# --- Server Specific Packages ---
-	if [ "$IS_SERVER" = true ]; then
-		if ! command -v docker &>/dev/null; then
-			echo "Installing Docker..."
-			# https://docs.docker.com/engine/install/ubuntu/
-			sudo install -m 0755 -d /etc/apt/keyrings
-			sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-			sudo chmod a+r /etc/apt/keyrings/docker.asc
+# --- Server Specific Packages ---
+if [ "$IS_SERVER" = true ]; then
+	if ! command -v docker &>/dev/null; then
+		echo "Installing Docker..."
+		# https://docs.docker.com/engine/install/ubuntu/
+		sudo install -m 0755 -d /etc/apt/keyrings
+		sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+		sudo chmod a+r /etc/apt/keyrings/docker.asc
 
-			# Add the repository to Apt sources:
-			sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+		# Add the repository to Apt sources:
+		sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
 Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
 Components: stable
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
-			sudo apt-get update -qq
-			sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+		sudo apt-get update -qq
+		sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-			echo "Adding $(whoami) to docker group..."
-			sudo groupadd docker || true
-			sudo usermod -aG docker "$USER" || true
-			newgrp docker || true
-		fi
-	fi
-
-	sudo apt-get autoremove -y -qq
-	sudo apt-get clean
-	log_success "System packages are up to date."
-
-else
-	log_warn "Sudo not available or password required. Skipping system updates and unattended-upgrades."
-	# Try shell change without sudo if needed
-	CURRENT_SHELL_PATH=$(getent passwd "$USER" | cut -d: -f7 2>/dev/null || echo $SHELL)
-	TARGET_SHELL_PATH=$(command -v zsh)
-	if [ -n "$TARGET_SHELL_PATH" ] && [ "$CURRENT_SHELL_PATH" != "$TARGET_SHELL_PATH" ]; then
-		chsh -s "$TARGET_SHELL_PATH" || log_warn "Failed to change shell. Try manually: chsh -s $TARGET_SHELL_PATH"
+		echo "Adding $(whoami) to docker group..."
+		sudo groupadd docker || true
+		sudo usermod -aG docker "$USER" || true
+		newgrp docker || true
 	fi
 fi
+
+sudo apt-get autoremove -y -qq
+sudo apt-get clean
+log_success "System packages are up to date."
 
 # --- Mise Setup ---
 export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/config.toml"
@@ -157,30 +141,28 @@ if command -v mise &>/dev/null; then
 	fi
 	mise install
 
-	if [ "$HAVE_SUDO" = true ]; then
-		echo "Configuring system-wide access for mise..."
-		# 1. Symlink mise binary to /usr/local/bin
-		if [ -n "$MISE_BIN" ] && [ "$MISE_BIN" != "/usr/local/bin/mise" ]; then
-			sudo ln -sf "$MISE_BIN" /usr/local/bin/mise
-		fi
+	echo "Configuring system-wide access for mise..."
+	# 1. Symlink mise binary to /usr/local/bin
+	if [ -n "$MISE_BIN" ] && [ "$MISE_BIN" != "/usr/local/bin/mise" ]; then
+		sudo ln -sf "$MISE_BIN" /usr/local/bin/mise
+	fi
 
-		# 2. Add the output of `mise activate bash --shims` to sudo secure_path
-		if [ -n "$MISE_BIN" ]; then
-			SHIM_PATH=$("$MISE_BIN" activate bash --shims | sed -e 's/^export PATH=\"//' -e 's/:$PATH"$//')
-		fi
+	# 2. Add the output of `mise activate bash --shims` to sudo secure_path
+	if [ -n "$MISE_BIN" ]; then
+		SHIM_PATH=$("$MISE_BIN" activate bash --shims | sed -e 's/^export PATH=\"//' -e 's/:$PATH"$//')
+	fi
 
-		if [ -n "$SHIM_PATH" ]; then
-			echo "Adding $SHIM_PATH to sudo secure_path..."
+	if [ -n "$SHIM_PATH" ]; then
+		echo "Adding $SHIM_PATH to sudo secure_path..."
 
-			# Standard Ubuntu secure_path with the shim path appended
-			SECURE_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$SHIM_PATH"
+		# Standard Ubuntu secure_path with the shim path appended
+		SECURE_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$SHIM_PATH"
 
-			# Create the sudoers configuration file
-			echo "Defaults secure_path=\"$SECURE_PATH\"" | sudo tee /etc/sudoers.d/mise-shims >/dev/null
+		# Create the sudoers configuration file
+		echo "Defaults secure_path=\"$SECURE_PATH\"" | sudo tee /etc/sudoers.d/mise-shims >/dev/null
 
-			# Set correct permissions (440 is required for sudoers files)
-			sudo chmod 440 /etc/sudoers.d/mise-shims
-		fi
+		# Set correct permissions (440 is required for sudoers files)
+		sudo chmod 440 /etc/sudoers.d/mise-shims
 	fi
 else
 	log_error "Mise binary not found after installation attempt."
