@@ -1,0 +1,110 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -e
+
+# --- OS & Environment Detection ---
+IS_SERVER=false
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+    IS_SERVER=true
+fi
+if [[ "$(uname -a)" == *"Ubuntu"* && "$(lsb_release -d)" == *"Server"* ]]; then
+    IS_SERVER=true
+fi
+
+echo "Starting Linux Setup (Server Mode: $IS_SERVER)..."
+
+# --- 1. Base Setup ---
+export DEBIAN_FRONTEND=noninteractive
+
+if sudo -n true 2>/dev/null || [ "$EUID" -eq 0 ]; then
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq curl gnupg ca-certificates apt-transport-https lsb-release
+
+    # --- Package Installation ---
+    PKG_LIST=(
+        "build-essential"
+        "curl"
+        "ffmpeg"
+        "git"
+        "graphviz"
+        "htop"
+        "imagemagick"
+        "nmap"
+        "sqlite3"
+        "tesseract-ocr"
+        "unzip"
+        "wget"
+        "zip"
+        "zsh"
+    )
+
+    if [ "$IS_SERVER" = true ]; then
+        echo "Server detected. Checking Docker..."
+        if ! command -v docker &> /dev/null; then
+            echo "Installing Docker..."
+            sudo install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
+            sudo chmod a+r /etc/apt/keyrings/docker.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            sudo usermod -aG docker "$USER" || true
+        fi
+    fi
+
+    echo "Installing APT packages..."
+    sudo apt-get install -y -qq "${PKG_LIST[@]}"
+else
+    echo "Sudo not available. Skipping APT package installation."
+fi
+
+# --- Mise Setup ---
+if ! command -v mise &> /dev/null; then
+    echo "Installing Mise..."
+    curl https://mise.run | sh
+fi
+export PATH="$HOME/.local/bin:$PATH"
+if command -v mise &> /dev/null; then
+    echo "Running Mise Install..."
+    mise install
+fi
+
+{{ else if eq .chezmoi.os "darwin" -}}
+#!/bin/bash
+set -e
+
+# --- Homebrew Setup ---
+if ! command -v brew &> /dev/null; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+# --- Brew Bundle ---
+echo "Installing Brew packages..."
+brew bundle --no-lock --file=/dev/stdin <<EOF
+brew "curl"
+brew "ffmpeg"
+brew "git"
+brew "graphviz"
+brew "htop"
+brew "imagemagick"
+brew "nmap"
+brew "sqlite"
+brew "tesseract"
+brew "wget"
+brew "zsh"
+EOF
+
+# --- Mise Setup ---
+if ! command -v mise &> /dev/null; then
+    echo "Installing Mise..."
+    curl https://mise.run | sh
+fi
+export PATH="$HOME/.local/bin:$PATH"
+mise install
+
+{{ else if eq .chezmoi.os "windows" -}}
+echo "Windows setup: Ensure Mise is installed."
+winget install jdx.mise
+mise install
+{{ end -}}

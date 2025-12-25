@@ -1,26 +1,11 @@
-skip_global_compinit=1
+# skip_global_compinit=1
 
-# export PNPM_HOME="$HOME/.local/share/pnpm"
-
-# PATH modifications
-export PATH=$HOME/.local/bin:$HOME/bin:$PATH
-# export PATH=$HOME/.local/bin:$HOME/bin:$PNPM_HOME:$PATH
-
-# rust
-# [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PATH=$HOME/.local/bin:$HOME/bin:$PNPM_HOME:$PATH
 
 # android
 export ANDROID_HOME="$HOME/android/sdk"
 export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$PATH"
-
-# Set default editor
-if [[ "$TERM_PROGRAM" == "vscode" ]] && command -v code >/dev/null 2>&1; then
-	export EDITOR='code --wait'
-elif command -v fresh >/dev/null 2>&1; then
-	export EDITOR='fresh'
-else
-	export EDITOR='nano'
-fi
 
 # --- WSL Specific Aliases & Configuration ---
 if command -v wslinfo >/dev/null 2>&1 || [[ -n "$WSL_DISTRO_NAME" ]]; then

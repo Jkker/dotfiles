@@ -24,6 +24,7 @@ znap source ohmyzsh/ohmyzsh lib/git plugins/git
 
 # 3. Binary Tools
 znap eval mise 'mise activate zsh'
+znap eval chezmoi 'chezmoi completion zsh'
 znap eval carapace 'carapace _carapace'
 znap source g-plane/pnpm-shell-completion pnpm-shell-completion.plugin.zsh
 if [[ ! -f ~[g-plane/pnpm-shell-completion]/pnpm-shell-completion ]]; then
@@ -173,10 +174,20 @@ alias dv="deactivate"
 
 # ZSH Aliases
 alias sz=". $ZDOTDIR/.zshrc"
-alias cz="$EDITOR $ZDOTDIR"
+alias cz="$EDITOR $ZDOTDIR/.zshrc"
 alias gy="gemini -y"
 
 znap source romkatv/powerlevel10k powerlevel10k.zsh-theme
 # To customize prompt, run `p10k configure` or edit ~/.config/zsh/.p10k.zsh.
 [[ ! -f ~/.config/zsh/.p10k.zsh ]] || source ~/.config/zsh/.p10k.zsh
+
+# Editor Configuration
+if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+  export EDITOR="code --wait"
+elif command -v fr >/dev/null 2>&1; then
+  export EDITOR="fr"
+else
+  export EDITOR="nano"
+fi
+export VISUAL="$EDITOR"
 

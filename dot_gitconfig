@@ -1,0 +1,22 @@
+[credential "https://github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[user]
+	name = Jkker
+	email = j@erry.dev
+[init]
+	defaultBranch = main
+[push]
+	default = current
+	autoSetupRemote = true
+[diff]
+	tool = difftastic
+[difftool]
+	prompt = false
+[difftool "difftastic"]
+	cmd = difft \"$LOCAL\" \"$REMOTE\"
+[pager]
+	difftool = true
