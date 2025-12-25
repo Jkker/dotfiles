@@ -1,9 +1,9 @@
 [credential "https://github.com"]
 	helper =
-	helper = !/usr/bin/gh auth git-credential
+	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper =
-	helper = !/usr/bin/gh auth git-credential
+	helper = !gh auth git-credential
 [user]
 	name = Jkker
 	email = j@erry.dev
@@ -13,10 +13,12 @@
 	default = current
 	autoSetupRemote = true
 [diff]
-	tool = difftastic
-[difftool]
-	prompt = false
-[difftool "difftastic"]
-	cmd = difft \"$LOCAL\" \"$REMOTE\"
-[pager]
-	difftool = true
+    external = difft
+
+[alias]
+# `git log` with patches shown with difftastic.
+dl = -c diff.external=difft log -p --ext-diff
+# Show the most recent commit with difftastic.
+ds = -c diff.external=difft show --ext-diff
+# `git diff` with difftastic.
+dft = -c diff.external=difft diff

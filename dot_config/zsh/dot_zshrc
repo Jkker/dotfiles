@@ -184,8 +184,8 @@ znap source romkatv/powerlevel10k powerlevel10k.zsh-theme
 # Editor Configuration
 if [[ "$TERM_PROGRAM" == "vscode" ]]; then
   export EDITOR="code --wait"
-elif command -v fr >/dev/null 2>&1; then
-  export EDITOR="fr"
+elif command -v fresh >/dev/null 2>&1; then
+  export EDITOR="fresh"
 else
   export EDITOR="nano"
 fi
