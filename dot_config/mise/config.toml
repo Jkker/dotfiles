@@ -17,7 +17,7 @@ java = "17"
 lazydocker = "latest"
 lazygit = "latest"
 mkcert = "latest"
-node = { version = "latest", postinstall = "corepack enable && corepack install --global pnpm@latest" }
+node = { version = "lts", postinstall = "corepack enable && corepack install --global pnpm@latest" }
 "npm:@dokploy/cli" = "latest"
 "npm:@fresh-editor/fresh-editor" = "latest"
 "npm:@google/gemini-cli" = "latest"
