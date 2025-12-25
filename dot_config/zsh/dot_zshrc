@@ -1,0 +1,182 @@
+# # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+#   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+# fi
+() { [[ -r $1 ]] && source $1 } ${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-$USERNAME.zsh
+
+# mise
+export MISE_EXPERIMENTAL=1
+eval "$(mise activate zsh --shims)"
+
+# 1. Download Znap (if not exists)
+[[ -f ~/app/zsh/zsh-snap/znap.zsh ]] || git clone --depth 1 -- \
+    https://github.com/marlonrichert/zsh-snap.git ~/app/zsh/zsh-snap
+source ~/app/zsh/zsh-snap/znap.zsh
+
+# 2. Plugins
+znap eval zoxide 'zoxide init zsh'
+
+znap source zsh-users/zsh-syntax-highlighting
+znap source marlonrichert/zsh-autocomplete
+znap clone zsh-users/zsh-completions ohmyzsh/ohmyzsh
+fpath=( ~[zsh-users/zsh-completions]/src $fpath )      # Add completions.
+znap source ohmyzsh/ohmyzsh lib/git plugins/git
+
+# 3. Binary Tools
+znap eval mise 'mise activate zsh'
+znap eval carapace 'carapace _carapace'
+znap source g-plane/pnpm-shell-completion pnpm-shell-completion.plugin.zsh
+if [[ ! -f ~[g-plane/pnpm-shell-completion]/pnpm-shell-completion ]]; then
+  (cd ~[g-plane/pnpm-shell-completion] && ./zplug.zsh)
+fi
+znap source zsh-users/zsh-autosuggestions zsh-autosuggestions.plugin.zsh
+
+# 4. Settings & Configuration
+
+# History
+# setopt HIST_IGNORE_ALL_DUPS
+
+# Keybindings
+# Standard Keybindings (Home/End/Delete) using terminfo for portability
+if (( ${+terminfo[kdch1]} )); then bindkey "${terminfo[kdch1]}" delete-char; fi
+bindkey "^[[3~" delete-char # Common fallback for Delete
+bindkey "^[3;5~" delete-char
+
+if (( ${+terminfo[khome]} )); then bindkey "${terminfo[khome]}" beginning-of-line; fi
+bindkey "^[[H" beginning-of-line # Common fallback for Home
+
+if (( ${+terminfo[kend]} )); then bindkey "${terminfo[kend]}" end-of-line; fi
+bindkey "^[[F" end-of-line # Common fallback for End
+
+# Up/Down Arrow (History Search)
+if (( ${+terminfo[kcuu1]} )); then bindkey "${terminfo[kcuu1]}" up-line-or-search; fi
+bindkey "^[[A" up-line-or-search
+bindkey "^[OA" up-line-or-search
+
+if (( ${+terminfo[kcud1]} )); then bindkey "${terminfo[kcud1]}" down-line-or-search; fi
+bindkey "^[[B" down-line-or-search
+bindkey "^[OB" down-line-or-search
+
+# Ctrl+Left/Right
+bindkey "^[[1;5D" backward-word
+bindkey "^[[1;5C" forward-word
+
+# Fix CTRL + Backspace
+bindkey '^H' backward-kill-word
+
+# 5. Load p10k config
+# [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# 6. Aliases & Functions
+# Clipboard
+function copy() {
+  if [[ -x /mnt/c/Windows/System32/clip.exe ]]; then
+    /mnt/c/Windows/System32/clip.exe
+  elif command -v wl-copy >/dev/null 2>&1; then
+    wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    xclip -selection clipboard
+  elif command -v pbcopy >/dev/null 2>&1; then
+    pbcopy
+  else
+    echo "No clipboard tool found."
+  fi
+}
+
+# CLI Tools Aliases
+alias fr="fresh"
+alias lzd="lazydocker"
+alias lzg="lazygit"
+
+if command -v eza >/dev/null 2>&1; then
+  alias ls='eza --group-directories-first --icons=auto'
+  alias tree='ls --tree'
+else
+  alias ls='ls --color=auto'
+fi
+
+if command -v gtrash >/dev/null 2>&1; then
+  alias del='gtrash put'
+fi
+
+alias grep='grep --color=auto'
+
+# yazi
+function y() {
+	local tmp="$(mktemp -t \"yazi-cwd.XXXXXX\")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	IFS= read -r -d '' cwd < "$tmp"
+	[ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+	rm -f -- "$tmp"
+}
+
+# NPM Aliases (with ni)
+alias pnpx="pnpm dlx"
+alias pp="pnpm"
+alias ni="pnpm install"
+alias nid="pnpm install -D"
+function nidt() {
+	if [ "$#" -eq 0 ]; then
+		echo "Usage: nidt <package-names>"
+		return 1
+	fi
+
+	local packages=()
+	local pkg
+	for pkg in "$@"; do
+		pkg=${pkg##[[:space:]]#} # trim leading
+		pkg=${pkg%%[[:space:]]#} # trim trailing
+		[ -n "$pkg" ] && packages+=("@types/${pkg}")
+	done
+
+	if [ "${#packages[@]}" -eq 0 ]; then
+		echo "Usage: nidt <package-names>"
+		return 1
+	fi
+
+	local cmd=(pnpm install --save-dev "${packages[@]}")
+	echo "Executing: ${cmd[*]}"
+	"${cmd[@]}"
+}
+alias nun="pnpm uninstall"
+alias nig="pnpm install -g"
+alias nr="pnpm run"
+alias nb="nr build"
+alias nt="nr test"
+alias nrl="nr lint"
+alias nrt="nr typecheck"
+alias nd="nr dev"
+alias ns="nr start"
+alias ppab="pnpm approve-builds"
+alias vt="xx vitest"
+alias gcan="git commit -a --amend --no-edit"
+alias vn="xx vite-node"
+alias v="xx vite-node"
+alias eslint="xx eslint"
+alias prettier="xx prettier"
+alias npk="rm -rf node_modules package-lock.json yarn.lock pnpm-lock.yaml **/node_modules"
+
+# app/GitHub Aliases
+alias gcl="gh repo clone"
+alias gvw="gh repo view --web"
+alias gcm="git commit -m"
+alias gcmn="git commit --no-verify -m"
+alias glg="git log --oneline --graph --decorate --all"
+alias gmain="git checkout main"
+alias grbmain="git rebase origin/main"
+alias gsta="git stash push --include-untracked"
+
+# Python Aliases
+alias py="python"
+alias av=". .venv/bin/activate"
+alias dv="deactivate"
+
+# ZSH Aliases
+alias sz=". $ZDOTDIR/.zshrc"
+alias cz="$EDITOR $ZDOTDIR"
+alias gy="gemini -y"
+
+znap source romkatv/powerlevel10k powerlevel10k.zsh-theme
+# To customize prompt, run `p10k configure` or edit ~/.config/zsh/.p10k.zsh.
+[[ ! -f ~/.config/zsh/.p10k.zsh ]] || source ~/.config/zsh/.p10k.zsh
+
