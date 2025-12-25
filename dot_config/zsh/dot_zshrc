@@ -1,12 +1,19 @@
 # # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-#   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-# fi
 () { [[ -r $1 ]] && source $1 } ${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-$USERNAME.zsh
 
+
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PATH=$HOME/.local/bin:$HOME/bin:$PNPM_HOME:$PATH
+
+# android
+export ANDROID_HOME="$HOME/android/sdk"
+if [[ -d "$ANDROID_HOME" ]]; then
+	export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$PATH"
+fi
+
 # mise
+export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/mise.yaml"
 export MISE_EXPERIMENTAL=1
-eval "$(mise activate zsh --shims)"
 
 # 1. Download Znap (if not exists)
 [[ -f ~/app/zsh/zsh-snap/znap.zsh ]] || git clone --depth 1 -- \
@@ -14,23 +21,28 @@ eval "$(mise activate zsh --shims)"
 source ~/app/zsh/zsh-snap/znap.zsh
 
 # 2. Plugins
-znap eval zoxide 'zoxide init zsh'
-
-znap source zsh-users/zsh-syntax-highlighting
 znap source marlonrichert/zsh-autocomplete
+
 znap clone zsh-users/zsh-completions ohmyzsh/ohmyzsh
 fpath=( ~[zsh-users/zsh-completions]/src $fpath )      # Add completions.
-znap source ohmyzsh/ohmyzsh lib/git plugins/git
+
+znap source ohmyzsh/ohmyzsh lib/git plugins/git # Load git plugin from ohmyzsh.
+
+ZSH_HIGHLIGHT_HIGHLIGHTERS=( main brackets )
+znap source zsh-users/zsh-syntax-highlighting
+
+ZSH_AUTOSUGGEST_STRATEGY=( history )
+znap source zsh-users/zsh-autosuggestions
 
 # 3. Binary Tools
+znap eval zoxide 'zoxide init zsh'
 znap eval mise 'mise activate zsh'
-znap eval chezmoi 'chezmoi completion zsh'
 znap eval carapace 'carapace _carapace'
+znap eval chezmoi 'chezmoi completion zsh'
 znap source g-plane/pnpm-shell-completion pnpm-shell-completion.plugin.zsh
 if [[ ! -f ~[g-plane/pnpm-shell-completion]/pnpm-shell-completion ]]; then
   (cd ~[g-plane/pnpm-shell-completion] && ./zplug.zsh)
 fi
-znap source zsh-users/zsh-autosuggestions zsh-autosuggestions.plugin.zsh
 
 # 4. Settings & Configuration
 
@@ -48,7 +60,7 @@ setopt HIST_IGNORE_SPACE         # Do not record an event starting with a space.
 setopt HIST_SAVE_NO_DUPS         # Do not write a duplicate event to the history file.
 setopt HIST_VERIFY               # Do not execute immediately upon history expansion.
 
-# Keybindings
+# 5. Keybindings
 # Standard Keybindings (Home/End/Delete) using terminfo for portability
 if (( ${+terminfo[kdch1]} )); then bindkey "${terminfo[kdch1]}" delete-char; fi
 bindkey "^[[3~" delete-char # Common fallback for Delete
@@ -60,25 +72,12 @@ bindkey "^[[H" beginning-of-line # Common fallback for Home
 if (( ${+terminfo[kend]} )); then bindkey "${terminfo[kend]}" end-of-line; fi
 bindkey "^[[F" end-of-line # Common fallback for End
 
-# Up/Down Arrow (History Search)
-# Disabled to let zsh-autocomplete handle these
-# if (( ${+terminfo[kcuu1]} )); then bindkey "${terminfo[kcuu1]}" up-line-or-search; fi
-# bindkey "^[[A" up-line-or-search
-# bindkey "^[OA" up-line-or-search
-
-# if (( ${+terminfo[kcud1]} )); then bindkey "${terminfo[kcud1]}" down-line-or-search; fi
-# bindkey "^[[B" down-line-or-search
-# bindkey "^[OB" down-line-or-search
-
 # Ctrl+Left/Right
 bindkey "^[[1;5D" backward-word
 bindkey "^[[1;5C" forward-word
 
 # Fix CTRL + Backspace
 bindkey '^H' backward-kill-word
-
-# 5. Load p10k config
-# [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 # 6. Aliases & Functions
 # Clipboard
@@ -189,10 +188,6 @@ alias sz=". $ZDOTDIR/.zshrc"
 alias cz="$EDITOR $ZDOTDIR/.zshrc"
 alias gy="gemini -y"
 
-znap source romkatv/powerlevel10k powerlevel10k.zsh-theme
-# To customize prompt, run `p10k configure` or edit ~/.config/zsh/.p10k.zsh.
-[[ ! -f ~/.config/zsh/.p10k.zsh ]] || source ~/.config/zsh/.p10k.zsh
-
 # Editor Configuration
 if [[ "$TERM_PROGRAM" == "vscode" ]]; then
   export EDITOR="code --wait"
@@ -202,4 +197,46 @@ else
   export EDITOR="nano"
 fi
 export VISUAL="$EDITOR"
+
+# WSL Specific Aliases & Configuration
+if command -v wslinfo >/dev/null 2>&1 || [[ -n "$WSL_DISTRO_NAME" ]]; then
+	export BROWSER=wslview
+
+	# Add Windows tools to PATH
+	if command -v wslvar >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+		local local_appdata=$(wslpath "$(wslvar LOCALAPPDATA)")
+		if [[ -n "$local_appdata" ]]; then
+			# ADB Platform Tools
+			local adb_path="$local_appdata/Microsoft/WinGet/Packages/Google.PlatformTools_Microsoft.Winget.Source_8wekyb3d8bbwe/platform-tools"
+			if [[ -d "$adb_path" ]]; then
+				export PATH="$PATH:$adb_path"
+			fi
+			# Antigravity
+			local antigravity_path="$local_appdata/Programs/Antigravity"
+			if [[ -d "$antigravity_path" ]]; then
+				alias antigravity="$antigravity_path/bin/antigravity"
+			fi
+			# VSCode
+			local vscode_path="/mnt/c/Program Files/Microsoft VS Code/bin"
+			if [[ -d "$vscode_path" ]]; then
+				export PATH="$PATH:$vscode_path"
+			fi
+
+		fi
+	fi
+
+	# Aliases
+	alias xdg-open='wslview'
+	alias explorer='/mnt/c/WINDOWS/explorer.exe'
+	alias open="explorer"
+
+	alias pwsh="'/mnt/c/Program Files/PowerShell/7/pwsh.exe'"
+	alias adb="adb.exe -d"
+	alias fastboot="fastboot.exe"
+fi
+
+# Load p10k prompt
+znap source romkatv/powerlevel10k powerlevel10k.zsh-theme
+# To customize prompt, run `p10k configure` or edit ~/.config/zsh/.p10k.zsh.
+[[ ! -f ~/.config/zsh/.p10k.zsh ]] || source ~/.config/zsh/.p10k.zsh
 
