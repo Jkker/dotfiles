@@ -1,27 +1,27 @@
 # # Enable Powerlevel10k instant prompt. Should stay close to the top of .zshrc.
 () { [[ -r $1 ]] && source $1 } ${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-$USERNAME.zsh
 
+# path setup
 
 export PNPM_HOME="$HOME/.local/share/pnpm"
 export PATH=$HOME/.local/bin:$HOME/bin:$PNPM_HOME:$PATH
 
-# android
 export ANDROID_HOME="$HOME/android/sdk"
 if [[ -d "$ANDROID_HOME" ]]; then
 	export PATH="$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$PATH"
 fi
 
-# mise
-export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/mise.yaml"
-export MISE_EXPERIMENTAL=1
-znap eval mise 'mise activate zsh' # Activate mise zsh integration
-
-# 1. Download Znap (if not exists)
+# 0. znap
 [[ -f ~/app/zsh/zsh-snap/znap.zsh ]] || git clone --depth 1 -- \
     https://github.com/marlonrichert/zsh-snap.git ~/app/zsh/zsh-snap
 source ~/app/zsh/zsh-snap/znap.zsh
 
-# 2. Plugins
+# 1. mise
+export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/mise.yaml"
+export MISE_EXPERIMENTAL=1
+znap eval mise 'mise activate zsh'
+
+# 2. zsh plugins
 znap eval zoxide 'zoxide init zsh'
 
 znap source marlonrichert/zsh-autocomplete
