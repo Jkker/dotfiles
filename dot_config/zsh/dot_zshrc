@@ -38,9 +38,11 @@ ZSH_AUTOSUGGEST_STRATEGY=( history )
 znap source zsh-users/zsh-autosuggestions
 
 # 3. Binary Tools
-# znap eval carapace 'carapace _carapace'
+znap eval carapace 'carapace _carapace'
 znap eval mise 'mise completions zsh'
 znap eval chezmoi 'chezmoi completion zsh'
+znap eval uv 'uv generate-shell-completion zsh'
+znap eval uvx 'uvx --generate-shell-completion zsh'
 znap source g-plane/pnpm-shell-completion pnpm-shell-completion.plugin.zsh
 if [[ ! -f ~[g-plane/pnpm-shell-completion]/pnpm-shell-completion ]]; then
   (cd ~[g-plane/pnpm-shell-completion] && ./zplug.zsh)
