@@ -29,7 +29,6 @@ node = { version = "lts", postinstall = "corepack enable && corepack install --g
 "npm:@dokploy/cli" = "latest"
 "npm:@fresh-editor/fresh-editor" = "latest"
 "npm:@google/gemini-cli" = "latest"
-oci = "latest"
 rg = "latest"
 ruff = "latest"
 rust = "latest"
