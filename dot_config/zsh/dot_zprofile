@@ -1,0 +1,47 @@
+# WSL Specific Configuration (Best placed in ~/.zprofile)
+# Requires 'wslu' package (sudo apt install wslu)
+if [[ -n "$WSL_DISTRO_NAME" ]] && command -v wslvar >/dev/null; then
+
+	# --- 1. Resolve Base Windows Paths (Expensive IO, do once) ---
+	# We fetch the raw Windows path via wslvar, then convert to WSL path via wslpath
+	local win_prog_files=$(wslpath "$(wslvar ProgramFiles)")
+	local win_local_appdata=$(wslpath "$(wslvar LOCALAPPDATA)")
+	local win_dir=$(wslpath "$(wslvar windir)")
+
+	# --- 2. VS Code Injection ---
+	# Adds the 'code' binary to PATH so 'code .' works
+	# Target: C:\Program Files\Microsoft VS Code\bin
+	local vscode_path="$win_prog_files/Microsoft VS Code/bin"
+	if [[ -d "$vscode_path" ]]; then
+		# Use Zsh 'path' array (automatically handles duplicates via typeset -U path)
+		path+=("$vscode_path")
+	fi
+
+	# --- 3. Antigravity Injection ---
+	# Target: %LOCALAPPDATA%\Programs\Antigravity\bin\antigravity
+	local antigravity_path="$win_local_appdata/Programs/Antigravity"
+	if [[ -d "$antigravity_path" ]]; then
+		# Check for .exe or plain binary to be safe
+		if [[ -f "$antigravity_path/bin/antigravity.exe" ]]; then
+			alias antigravity="'$antigravity_path/bin/antigravity.exe'"
+		elif [[ -f "$antigravity_path/bin/antigravity" ]]; then
+			alias antigravity="'$antigravity_path/bin/antigravity'"
+		fi
+	fi
+
+	# --- 4. PowerShell Core ---
+	# Target: C:\Program Files\PowerShell\7\pwsh.exe
+	local pwsh_path="$win_prog_files/PowerShell/7/pwsh.exe"
+	if [[ -f "$pwsh_path" ]]; then
+		alias pwsh="'$pwsh_path'"
+	fi
+
+	# --- 5. System Utilities ---
+	# Set default browser to the Windows default browser
+	export BROWSER=wslview
+	alias xdg-open='wslview'
+
+	# Map 'open' and 'explorer' to Windows Explorer
+	alias open="'$win_dir/explorer.exe'"
+	alias explorer="'$win_dir/explorer.exe'"
+fi
