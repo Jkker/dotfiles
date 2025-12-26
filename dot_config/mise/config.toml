@@ -1,3 +1,7 @@
+[settings]
+# This must be enabled to make the hooks work
+experimental = true
+
 [tools]
 aws-cli = { version = "latest", symlink_bins = "true" }
 bat = "latest"
