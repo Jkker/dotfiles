@@ -9,7 +9,6 @@ age.key_file = "~/.config/chezmoi/key.txt"
 [tools]
 aws-cli = { version = "latest", symlink_bins = "true" }
 bat = "latest"
-btop = "latest"
 chezmoi = "latest"
 dotenvx = "latest"
 dua = "latest"
