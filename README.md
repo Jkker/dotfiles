@@ -15,7 +15,7 @@ The core shell and terminal setup is public and can be used by others.
 To install everything, including encrypted secrets:
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply Jkker
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b $HOME/.local/bin init --apply Jkker
 ```
 
 This will prompt for the encryption passphrase.
@@ -25,7 +25,7 @@ This will prompt for the encryption passphrase.
 To install only the public configurations (shell, terminal, tools) and skip encrypted files:
 
 ```sh
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply Jkker --exclude=encrypted
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b $HOME/.local/bin init init --apply Jkker --exclude=encrypted
 ```
 
 ## Usage
