@@ -83,6 +83,14 @@ bindkey "^[[1;5C" forward-word
 # Fix CTRL + Backspace
 bindkey '^H' backward-kill-word
 
+# https://github.com/marlonrichert/zsh-autocomplete#make-tab-and-shifttab-go-to-the-menu
+# Make Tab and ShiftTab enter the menu instead of inserting a completion:
+bindkey              '^I' menu-select
+bindkey "$terminfo[kcbt]" menu-select
+
+bindkey -M menuselect              '^I'         menu-complete
+bindkey -M menuselect "$terminfo[kcbt]" reverse-menu-complete
+
 # 6. Aliases & Functions
 # Clipboard
 function copy() {
@@ -104,6 +112,11 @@ alias fr="fresh"
 alias lzd="lazydocker"
 alias lzg="lazygit"
 alias cz="chezmoi"
+alias cze="chezmoi edit --apply"
+alias czz="chezmoi edit --apply ~/.config/zsh/.zshrc"
+alias sz="exec zsh"
+alias gy="gemini -y"
+
 alias mx="mise exec --"
 alias del='gtrash put'
 if command -v eza >/dev/null 2>&1; then
@@ -175,10 +188,6 @@ alias gsta="git stash push --include-untracked"
 
 # Python Aliases
 alias py="python"
-
-# ZSH Aliases
-alias sz="exec zsh"
-alias gy="gemini -y"
 
 # Editor Configuration
 if [[ "$TERM_PROGRAM" == "vscode" ]]; then
