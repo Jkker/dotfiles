@@ -148,16 +148,17 @@ fi
 
 if command -v mise &>/dev/null; then
 	# Ensure Mise is loaded for this session
-	eval "$(mise activate bash)"
 	MISE_BIN="$(command -v mise)"
 
 	echo "Running Mise Install..."
 	if [ -f "$MISE_GLOBAL_CONFIG_FILE" ]; then
 		mise trust "$MISE_GLOBAL_CONFIG_FILE"
 	fi
+	mise install gh node
 	# if already authenticated with gh, pass the token to mise
 	GITHUB_TOKEN=$(gh auth token 2>/dev/null || echo "")
 	mise install || log_error "Mise installation failed."
+	eval "$(mise activate bash)"
 
 	echo "Configuring system-wide access for mise..."
 	# 1. Symlink mise binary to /usr/local/bin
