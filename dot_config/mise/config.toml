@@ -1,6 +1,10 @@
 [settings]
-# This must be enabled to make the hooks work
 experimental = true
+idiomatic_version_file_enable_tools = ["node"]
+npm.package_manager = "pnpm"
+pipx.uvx = true
+python.uv_venv_auto = true
+age.key_file = "~/.config/chezmoi/key.txt"
 
 [tools]
 aws-cli = { version = "latest", symlink_bins = "true" }
