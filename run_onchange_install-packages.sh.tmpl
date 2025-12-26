@@ -28,11 +28,17 @@ export DEBIAN_FRONTEND=noninteractive
 # --- WSL Specific Setup ---
 if [ "$IS_WSL" = true ]; then
 	echo "WSL: Configuring passwordless sudo for $(whoami)..."
-	echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/$(whoami) && sudo chmod 0440 /etc/sudoers.d/$(whoami)
-	echo "Disable appendWindowsPath to improve performance..."
-	echo "[interop]" | sudo tee /etc/wsl.conf >/dev/null
-	echo "appendWindowsPath = false" | sudo tee -a /etc/wsl.conf >/dev/null
-	echo "Interop issue may occur. See: https://github.com/microsoft/WSL/issues/13449#issuecomment-3250450582"
+	echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/$(whoami) >/dev/null
+	sudo chmod 0440 /etc/sudoers.d/$(whoami) || true
+
+	sudo tee /etc/wsl.conf >/dev/null <<'EOF'
+[boot]
+systemd=true
+
+[interop]
+appendWindowsPath=false
+EOF
+	echo "Modified /etc/wsl.conf to enable systemd and disable Windows PATH append..."
 fi
 
 sudo apt-get update -qq
