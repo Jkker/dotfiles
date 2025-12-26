@@ -25,7 +25,7 @@ java = "17"
 lazydocker = "latest"
 lazygit = "latest"
 mkcert = "latest"
-node = { version = "lts", postinstall = "corepack enable && corepack install --global pnpm@latest" }
+# node = { version = "lts", postinstall = "corepack enable && corepack install --global pnpm@latest" }
 "npm:@dokploy/cli" = "latest"
 "npm:@fresh-editor/fresh-editor" = "latest"
 "npm:@google/gemini-cli" = "latest"
@@ -45,3 +45,10 @@ zoxide = "latest"
 age = "latest"
 carapace = "latest"
 difftastic = "latest"
+oci = "latest"
+bitwarden = "latest"
+"npm:@playwright/mcp" = "latest"
+"npm:@upstash/context7-mcp" = "latest"
+
+[tools.node]
+version="lts"
