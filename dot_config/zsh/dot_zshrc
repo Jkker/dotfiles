@@ -17,7 +17,7 @@ fi
 source ~/app/zsh/zsh-snap/znap.zsh
 
 # 1. mise
-export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/mise.yaml"
+export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/config.toml"
 export MISE_EXPERIMENTAL=1
 znap eval mise 'mise activate zsh'
 
