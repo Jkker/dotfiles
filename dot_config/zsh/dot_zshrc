@@ -156,6 +156,16 @@ alias gsta="git stash push --include-untracked"
 # Python Aliases
 alias py="python"
 
+# Editor Setup
+if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+  export EDITOR="code --wait"
+elif command -v fresh >/dev/null 2>&1; then
+  export EDITOR="fresh"
+else
+  export EDITOR="nano"
+fi
+export VISUAL="$EDITOR"
+
 # Load p10k prompt
 znap source romkatv/powerlevel10k powerlevel10k.zsh-theme
 [[ ! -f $ZDOTDIR/.p10k.zsh ]] || source $ZDOTDIR/.p10k.zsh
