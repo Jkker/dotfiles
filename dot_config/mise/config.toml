@@ -48,6 +48,7 @@ oci = "latest"
 bitwarden = "latest"
 "npm:@playwright/mcp" = "latest"
 "npm:@upstash/context7-mcp" = "latest"
+"npm:shadcn" = "latest"
 
 [tools.node]
 version="lts"
