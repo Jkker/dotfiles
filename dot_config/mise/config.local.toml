@@ -1,0 +1,8 @@
+[tools]
+aws-cli = { version = "latest", symlink_bins = "true" }
+gradle = "8.5"
+java = "17"
+oci = "latest"
+go = "latest"
+rust = "latest"
+terraform = "latest"
