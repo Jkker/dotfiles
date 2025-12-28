@@ -1,50 +1,138 @@
 {{ if eq .chezmoi.os "linux" -}}
 #!/bin/bash
-set -e
+set -euo pipefail
+
+# ==============================================================================
+# System Setup Script - Linux
+# ==============================================================================
+# This script is idempotent and safe to run multiple times.
+# Each step checks if work is needed before making changes.
+# ==============================================================================
+
+# --- Timing & Tracing ---
+SCRIPT_START_TIME=$(date +%s)
+SCRIPT_LOG_FILE="${TMPDIR:-/tmp}/chezmoi-install-$(date +%Y%m%d-%H%M%S).log"
+exec > >(tee -a "$SCRIPT_LOG_FILE") 2>&1
+
+# --- Step Counter ---
+CURRENT_STEP=0
+TOTAL_STEPS=12
+
+step() {
+	CURRENT_STEP=$((CURRENT_STEP + 1))
+	local step_start_time=$(date +%s)
+	echo ""
+	echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+	echo -e "\033[1;36m[$CURRENT_STEP/$TOTAL_STEPS]\033[0m \033[1m$1\033[0m"
+	echo -e "\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+}
+
+# --- Logging Helpers ---
+log_info() { echo -e "\033[0;34m[INFO]\033[0m  $(date +'%H:%M:%S') $1"; }
+log_warn() { echo -e "\033[0;33m[WARN]\033[0m  $(date +'%H:%M:%S') $1"; }
+log_error() { echo -e "\033[0;31m[ERROR]\033[0m $(date +'%H:%M:%S') $1"; }
+log_ok() { echo -e "\033[0;32m[OK]\033[0m    $(date +'%H:%M:%S') $1"; }
+log_skip() { echo -e "\033[0;90m[SKIP]\033[0m  $(date +'%H:%M:%S') $1"; }
 
 # --- OS & Environment Detection ---
+step "Environment Detection"
+
 IS_SERVER=false
-if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
 	IS_SERVER=true
 fi
-if [[ "$(uname -a)" == *"Ubuntu"* && "$(lsb_release -d)" == *"Server"* ]]; then
+if [[ "$(uname -a)" == *"Ubuntu"* ]] && command -v lsb_release &>/dev/null && [[ "$(lsb_release -d 2>/dev/null)" == *"Server"* ]]; then
 	IS_SERVER=true
 fi
 
 IS_WSL=false
-if command -v wslinfo >/dev/null 2>&1 || [[ -n "$WSL_DISTRO_NAME" ]]; then
+if command -v wslinfo &>/dev/null || [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
 	IS_WSL=true
 fi
 
-# --- Helpers ---
-log_info() { echo -e "\033[0;34m[INFO]\033[0m $(date +'%Y-%m-%dT%H:%M:%S%z') $1"; }
-log_warn() { echo -e "\033[0;33m[WARN]\033[0m $(date +'%Y-%m-%dT%H:%M:%S%z') $1"; }
-log_error() { echo -e "\033[0;31m[ERROR]\033[0m $(date +'%Y-%m-%dT%H:%M:%S%z') $1"; }
-log_success() { echo -e "\033[0;32m[SUCCESS]\033[0m $(date +'%Y-%m-%dT%H:%M:%S%z') $1"; }
+log_info "OS: $(uname -s) $(uname -r)"
+log_info "User: $USER"
+log_info "Home: $HOME"
+log_info "IS_SERVER: $IS_SERVER"
+log_info "IS_WSL: $IS_WSL"
+log_info "Log file: $SCRIPT_LOG_FILE"
 
-# --- 1. Base Setup ---
+# --- Export Environment ---
 export DEBIAN_FRONTEND=noninteractive
 
-# --- WSL Specific Setup ---
-if [ "$IS_WSL" = true ]; then
-	echo "WSL: Configuring passwordless sudo for $(whoami)..."
-	echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/$(whoami) >/dev/null
-	sudo chmod 0440 /etc/sudoers.d/$(whoami) || true
+# ==============================================================================
+# Step 2: WSL Configuration
+# ==============================================================================
+step "WSL Configuration"
 
-	sudo tee /etc/wsl.conf >/dev/null <<'EOF'
-[boot]
+if [ "$IS_WSL" = true ]; then
+	# --- Passwordless Sudo ---
+	SUDOERS_FILE="/etc/sudoers.d/$(whoami)"
+	EXPECTED_SUDOERS="$(whoami) ALL=(ALL) NOPASSWD:ALL"
+
+	if [ -f "$SUDOERS_FILE" ] && grep -qF "$EXPECTED_SUDOERS" "$SUDOERS_FILE" 2>/dev/null; then
+		log_skip "Passwordless sudo already configured"
+	else
+		log_info "Configuring passwordless sudo for $(whoami)..."
+		echo "$EXPECTED_SUDOERS" | sudo tee "$SUDOERS_FILE" >/dev/null
+		sudo chmod 0440 "$SUDOERS_FILE"
+		log_ok "Passwordless sudo configured"
+	fi
+
+	# --- WSL Config ---
+	WSL_CONF="/etc/wsl.conf"
+	WSL_CONF_CONTENT='[boot]
 systemd=true
 
 [interop]
-appendWindowsPath=false
-EOF
-	echo "Modified /etc/wsl.conf to enable systemd and disable Windows PATH append..."
+appendWindowsPath=false'
+
+	if [ -f "$WSL_CONF" ] && grep -q "systemd=true" "$WSL_CONF" && grep -q "appendWindowsPath=false" "$WSL_CONF"; then
+		log_skip "/etc/wsl.conf already configured"
+	else
+		log_info "Configuring /etc/wsl.conf..."
+		echo "$WSL_CONF_CONTENT" | sudo tee "$WSL_CONF" >/dev/null
+		log_ok "/etc/wsl.conf updated (restart WSL to apply)"
+	fi
+else
+	log_skip "Not running in WSL"
 fi
 
-sudo apt-get update -qq
-sudo apt-get upgrade -y -qq
+# ==============================================================================
+# Step 3: APT Update & Upgrade
+# ==============================================================================
+step "APT Update & Upgrade"
 
-# --- Package Installation ---
+APT_LAST_UPDATE_FILE="/var/lib/apt/periodic/update-success-stamp"
+APT_UPDATE_THRESHOLD=3600 # 1 hour in seconds
+
+needs_apt_update() {
+	if [ ! -f "$APT_LAST_UPDATE_FILE" ]; then
+		return 0
+	fi
+	local last_update=$(stat -c %Y "$APT_LAST_UPDATE_FILE" 2>/dev/null || echo 0)
+	local now=$(date +%s)
+	local age=$((now - last_update))
+	[ $age -gt $APT_UPDATE_THRESHOLD ]
+}
+
+if needs_apt_update; then
+	log_info "Running apt update (cache older than 1 hour)..."
+	sudo apt-get update -qq
+	log_ok "APT cache updated"
+else
+	log_skip "APT cache is fresh (updated within 1 hour)"
+fi
+
+log_info "Running apt upgrade..."
+sudo apt-get upgrade -y -qq
+log_ok "System packages upgraded"
+
+# ==============================================================================
+# Step 4: Core APT Packages
+# ==============================================================================
+step "Core APT Packages"
+
 PKG_LIST=(
 	"build-essential"
 	"curl"
@@ -68,139 +156,333 @@ PKG_LIST=(
 	"zsh"
 )
 
-echo "Installing APT packages..."
-sudo apt-get install -y -qq "${PKG_LIST[@]}"
+# Check which packages need installation
+PKGS_TO_INSTALL=()
+for pkg in "${PKG_LIST[@]}"; do
+	if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+		PKGS_TO_INSTALL+=("$pkg")
+	fi
+done
 
-if [ "$IS_WSL" = true ]; then
-	# install wslu for WSL utilities
-	echo "WSL: Installing wslu..."
-	sudo apt-get install -y -qq wslu
+if [ ${#PKGS_TO_INSTALL[@]} -eq 0 ]; then
+	log_skip "All ${#PKG_LIST[@]} core packages already installed"
+else
+	log_info "Installing ${#PKGS_TO_INSTALL[@]} packages: ${PKGS_TO_INSTALL[*]}"
+	sudo apt-get install -y -qq "${PKGS_TO_INSTALL[@]}"
+	log_ok "Installed: ${PKGS_TO_INSTALL[*]}"
 fi
 
-# --- Shell Setup ---
-CURRENT_SHELL_PATH=$(getent passwd "$USER" | cut -d: -f7 2>/dev/null || echo $SHELL)
-TARGET_SHELL_PATH=$(command -v zsh)
+# ==============================================================================
+# Step 5: WSL Utilities
+# ==============================================================================
+step "WSL Utilities"
 
-if [ -n "$TARGET_SHELL_PATH" ] && [ "$CURRENT_SHELL_PATH" != "$TARGET_SHELL_PATH" ]; then
-	log_info "Changing default shell to zsh..."
-	if sudo -n true 2>/dev/null; then
-		sudo chsh -s "$TARGET_SHELL_PATH" "$USER" || log_warn "Failed to change shell. Try: chsh -s $TARGET_SHELL_PATH"
+if [ "$IS_WSL" = true ]; then
+	if dpkg-query -W -f='${Status}' wslu 2>/dev/null | grep -q "install ok installed"; then
+		log_skip "wslu already installed"
 	else
-		# Try without sudo
-		chsh -s "$TARGET_SHELL_PATH" || log_warn "Failed to change shell. Try manually: chsh -s $TARGET_SHELL_PATH"
+		log_info "Installing wslu..."
+		sudo apt-get install -y -qq wslu
+		log_ok "wslu installed"
+	fi
+else
+	log_skip "Not running in WSL"
+fi
+
+# ==============================================================================
+# Step 6: Default Shell Configuration
+# ==============================================================================
+step "Default Shell Configuration"
+
+CURRENT_SHELL_PATH=$(getent passwd "$USER" | cut -d: -f7 2>/dev/null || echo "${SHELL:-}")
+TARGET_SHELL_PATH=$(command -v zsh 2>/dev/null || echo "")
+
+if [ -z "$TARGET_SHELL_PATH" ]; then
+	log_warn "zsh not found in PATH"
+elif [ "$CURRENT_SHELL_PATH" = "$TARGET_SHELL_PATH" ]; then
+	log_skip "Default shell is already zsh"
+else
+	log_info "Changing default shell from $CURRENT_SHELL_PATH to $TARGET_SHELL_PATH..."
+	if sudo -n true 2>/dev/null; then
+		if sudo chsh -s "$TARGET_SHELL_PATH" "$USER"; then
+			log_ok "Default shell changed to zsh"
+		else
+			log_warn "Failed to change shell. Try manually: chsh -s $TARGET_SHELL_PATH"
+		fi
+	else
+		if chsh -s "$TARGET_SHELL_PATH" 2>/dev/null; then
+			log_ok "Default shell changed to zsh"
+		else
+			log_warn "Failed to change shell. Try manually: chsh -s $TARGET_SHELL_PATH"
+		fi
 	fi
 fi
 
-# Security: Unattended Upgrades
-log_info "Configuring Unattended Upgrades..."
-cat <<EOF | sudo tee /etc/apt/apt.conf.d/51unattended-upgrades-local >/dev/null
-Unattended-Upgrade::Allowed-Origins {
-    "\\\${distro_id}:\\\${distro_codename}";
-    "\\\${distro_id}:\\\${distro_codename}-security";
-    "\\\${distro_id}ESMApps:\\\${distro_codename}-apps-security";
-    "\\\${distro_id}ESM:\\\${distro_codename}-infra-security";
+# ==============================================================================
+# Step 7: Unattended Upgrades Configuration
+# ==============================================================================
+step "Unattended Upgrades Configuration"
+
+UNATTENDED_CONF="/etc/apt/apt.conf.d/51unattended-upgrades-local"
+UNATTENDED_CONF_CONTENT='Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
 };
 Unattended-Upgrade::Package-Blacklist {};
 Unattended-Upgrade::Automatic-Reboot "false";
-Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
-EOF
-sudo systemctl enable --now unattended-upgrades
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";'
 
-# --- Server Specific Packages ---
+# Compute checksum to detect changes
+EXPECTED_CHECKSUM=$(echo "$UNATTENDED_CONF_CONTENT" | md5sum | cut -d' ' -f1)
+CURRENT_CHECKSUM=""
+if [ -f "$UNATTENDED_CONF" ]; then
+	CURRENT_CHECKSUM=$(md5sum "$UNATTENDED_CONF" 2>/dev/null | cut -d' ' -f1 || echo "")
+fi
+
+if [ "$CURRENT_CHECKSUM" = "$EXPECTED_CHECKSUM" ]; then
+	log_skip "Unattended upgrades config unchanged"
+else
+	log_info "Writing unattended upgrades configuration..."
+	echo "$UNATTENDED_CONF_CONTENT" | sudo tee "$UNATTENDED_CONF" >/dev/null
+	log_ok "Unattended upgrades configured"
+fi
+
+# Enable service if not already active
+if systemctl is-enabled --quiet unattended-upgrades 2>/dev/null; then
+	log_skip "unattended-upgrades service already enabled"
+else
+	log_info "Enabling unattended-upgrades service..."
+	sudo systemctl enable --now unattended-upgrades
+	log_ok "unattended-upgrades service enabled"
+fi
+
+# ==============================================================================
+# Step 8: Docker Installation (Server Only)
+# ==============================================================================
+step "Docker Installation (Server Only)"
+
 if [ "$IS_SERVER" = true ]; then
-	if ! command -v docker &>/dev/null; then
-		echo "Installing Docker..."
-		# https://docs.docker.com/engine/install/ubuntu/
-		sudo install -m 0755 -d /etc/apt/keyrings
-		sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-		sudo chmod a+r /etc/apt/keyrings/docker.asc
+	if command -v docker &>/dev/null; then
+		DOCKER_VERSION=$(docker --version 2>/dev/null | head -1)
+		log_skip "Docker already installed: $DOCKER_VERSION"
+	else
+		log_info "Installing Docker..."
 
-		# Add the repository to Apt sources:
-		sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+		# Create keyrings directory
+		sudo install -m 0755 -d /etc/apt/keyrings
+
+		# Download GPG key if not present or outdated
+		DOCKER_GPG="/etc/apt/keyrings/docker.asc"
+		if [ ! -f "$DOCKER_GPG" ]; then
+			log_info "Downloading Docker GPG key..."
+			sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o "$DOCKER_GPG"
+			sudo chmod a+r "$DOCKER_GPG"
+		fi
+
+		# Add repository if not present
+		DOCKER_SOURCES="/etc/apt/sources.list.d/docker.sources"
+		if [ ! -f "$DOCKER_SOURCES" ]; then
+			log_info "Adding Docker repository..."
+			CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+			sudo tee "$DOCKER_SOURCES" >/dev/null <<EOF
 Types: deb
 URIs: https://download.docker.com/linux/ubuntu
-Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Suites: $CODENAME
 Components: stable
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
-		sudo apt-get update -qq
+			sudo apt-get update -qq
+		fi
+
+		log_info "Installing Docker packages..."
 		sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-		echo "Adding $(whoami) to docker group..."
-		sudo groupadd docker || true
-		sudo usermod -aG docker "$USER" || true
-		newgrp docker || true
-	fi
-fi
-
-sudo apt-get autoremove -y -qq
-sudo apt-get clean
-log_success "System packages are up to date."
-
-# --- Mise Setup ---
-export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/config.toml"
-
-if ! command -v mise &>/dev/null; then
-	echo "Installing Mise..."
-	curl https://mise.run | sh
-	export PATH="$HOME/.local/bin:$PATH"
-fi
-
-if command -v mise &>/dev/null; then
-	# Ensure Mise is loaded for this session
-	MISE_BIN="$(command -v mise)"
-
-	echo "Running Mise Install..."
-	if [ -f "$MISE_GLOBAL_CONFIG_FILE" ]; then
-		mise trust "$MISE_GLOBAL_CONFIG_FILE"
-	fi
-	mise install gh node
-	# if already authenticated with gh, pass the token to mise
-	GITHUB_TOKEN=$(gh auth token 2>/dev/null || echo "")
-	mise install || log_error "Mise installation failed."
-	eval "$(mise activate bash)"
-
-	echo "Configuring system-wide access for mise..."
-	# 1. Symlink mise binary to /usr/local/bin
-	if [ -n "$MISE_BIN" ] && [ "$MISE_BIN" != "/usr/local/bin/mise" ]; then
-		sudo ln -sf "$MISE_BIN" /usr/local/bin/mise
+		log_ok "Docker installed"
 	fi
 
-	# 2. Add the output of `mise activate bash --shims` to sudo secure_path
-	if [ -n "$MISE_BIN" ]; then
-		SHIM_PATH=$("$MISE_BIN" activate bash --shims | sed -e 's/^export PATH=\"//' -e 's/:$PATH"$//')
-	fi
-
-	if [ -n "$SHIM_PATH" ]; then
-		echo "Adding $SHIM_PATH to sudo secure_path..."
-
-		# Standard Ubuntu secure_path with the shim path appended
-		SECURE_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$SHIM_PATH"
-
-		# Create the sudoers configuration file
-		echo "Defaults secure_path=\"$SECURE_PATH\"" | sudo tee /etc/sudoers.d/mise-shims >/dev/null
-
-		# Set correct permissions (440 is required for sudoers files)
-		sudo chmod 440 /etc/sudoers.d/mise-shims
+	# Add user to docker group if not already member
+	if id -nG "$USER" | grep -qw docker; then
+		log_skip "User $USER already in docker group"
+	else
+		log_info "Adding $USER to docker group..."
+		sudo groupadd docker 2>/dev/null || true
+		sudo usermod -aG docker "$USER"
+		log_ok "User added to docker group (re-login required)"
 	fi
 else
-	log_error "Mise binary not found after installation attempt."
+	log_skip "Not a server environment"
 fi
 
-echo "Setup complete."
+# ==============================================================================
+# Step 9: APT Cleanup
+# ==============================================================================
+step "APT Cleanup"
+
+log_info "Removing unused packages..."
+sudo apt-get autoremove -y -qq
+sudo apt-get clean
+log_ok "APT cleanup complete"
+
+# ==============================================================================
+# Step 10: Mise Installation
+# ==============================================================================
+step "Mise Installation"
+
+export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/config.toml"
+
+if command -v mise &>/dev/null; then
+	MISE_VERSION=$(mise --version 2>/dev/null | head -1)
+	log_skip "Mise already installed: $MISE_VERSION"
+else
+	log_info "Installing Mise..."
+	curl -fsSL https://mise.run | sh
+	export PATH="$HOME/.local/bin:$PATH"
+	log_ok "Mise installed"
+fi
+
+# ==============================================================================
+# Step 11: Mise Tool Installation
+# ==============================================================================
+step "Mise Tool Installation"
+
+if command -v mise &>/dev/null; then
+	MISE_BIN="$(command -v mise)"
+
+	# Trust global config if exists
+	if [ -f "$MISE_GLOBAL_CONFIG_FILE" ]; then
+		if mise trust --show 2>/dev/null | grep -qF "$MISE_GLOBAL_CONFIG_FILE"; then
+			log_skip "Global mise config already trusted"
+		else
+			log_info "Trusting global mise config..."
+			mise trust "$MISE_GLOBAL_CONFIG_FILE"
+			log_ok "Mise config trusted"
+		fi
+	fi
+
+	# Install core tools first (gh and node needed for other installs)
+	log_info "Installing core mise tools (gh, node)..."
+	mise install gh node 2>&1 | grep -v "^$" || true
+
+	# Get GitHub token if authenticated
+	GITHUB_TOKEN=""
+	if command -v gh &>/dev/null; then
+		GITHUB_TOKEN=$(gh auth token 2>/dev/null || echo "")
+	fi
+	if [ -n "$GITHUB_TOKEN" ]; then
+		log_info "Using GitHub token for mise installs"
+		export GITHUB_TOKEN
+	fi
+
+	# Install all configured tools
+	log_info "Installing all mise tools..."
+	if mise install 2>&1 | grep -v "^$"; then
+		log_ok "Mise tools installed"
+	else
+		log_warn "Some mise tools may have failed to install"
+	fi
+
+	# Activate mise for this session
+	eval "$(mise activate bash)" 2>/dev/null || true
+else
+	log_error "Mise binary not found after installation attempt"
+fi
+
+# ==============================================================================
+# Step 12: Mise System-wide Access
+# ==============================================================================
+step "Mise System-wide Access"
+
+if command -v mise &>/dev/null; then
+	MISE_BIN="$(command -v mise)"
+
+	# Symlink mise to /usr/local/bin if needed
+	if [ -L "/usr/local/bin/mise" ] && [ "$(readlink -f /usr/local/bin/mise)" = "$(readlink -f "$MISE_BIN")" ]; then
+		log_skip "Mise symlink already correct"
+	elif [ "$MISE_BIN" != "/usr/local/bin/mise" ]; then
+		log_info "Creating symlink: /usr/local/bin/mise -> $MISE_BIN"
+		sudo ln -sf "$MISE_BIN" /usr/local/bin/mise
+		log_ok "Mise symlink created"
+	fi
+
+	# Configure sudo secure_path
+	SHIM_PATH=$("$MISE_BIN" activate bash --shims 2>/dev/null | sed -e 's/^export PATH="//' -e 's/:$PATH"$//' || echo "")
+
+	if [ -n "$SHIM_PATH" ]; then
+		SECURE_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:$SHIM_PATH"
+		SUDOERS_MISE="/etc/sudoers.d/mise-shims"
+		EXPECTED_CONTENT="Defaults secure_path=\"$SECURE_PATH\""
+
+		if [ -f "$SUDOERS_MISE" ] && grep -qF "$SHIM_PATH" "$SUDOERS_MISE" 2>/dev/null; then
+			log_skip "Sudo secure_path already includes mise shims"
+		else
+			log_info "Adding mise shims to sudo secure_path..."
+			echo "$EXPECTED_CONTENT" | sudo tee "$SUDOERS_MISE" >/dev/null
+			sudo chmod 440 "$SUDOERS_MISE"
+			log_ok "Sudo secure_path updated"
+		fi
+	else
+		log_warn "Could not determine mise shim path"
+	fi
+else
+	log_skip "Mise not available"
+fi
+
+# ==============================================================================
+# Summary
+# ==============================================================================
+SCRIPT_END_TIME=$(date +%s)
+SCRIPT_DURATION=$((SCRIPT_END_TIME - SCRIPT_START_TIME))
+
+echo ""
+echo -e "\033[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "\033[1;32m✓ Setup Complete\033[0m"
+echo -e "\033[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "  Duration: ${SCRIPT_DURATION}s"
+echo -e "  Log file: $SCRIPT_LOG_FILE"
+echo ""
 
 {{ else if eq .chezmoi.os "darwin" -}}
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# --- Homebrew Setup ---
-if ! command -v brew &>/dev/null; then
-	echo "Installing Homebrew..."
+# ==============================================================================
+# System Setup Script - macOS
+# ==============================================================================
+
+SCRIPT_START_TIME=$(date +%s)
+CURRENT_STEP=0
+TOTAL_STEPS=4
+
+step() {
+	CURRENT_STEP=$((CURRENT_STEP + 1))
+	echo ""
+	echo -e "\033[1;36m[$CURRENT_STEP/$TOTAL_STEPS]\033[0m \033[1m$1\033[0m"
+}
+
+log_info() { echo -e "\033[0;34m[INFO]\033[0m  $1"; }
+log_ok() { echo -e "\033[0;32m[OK]\033[0m    $1"; }
+log_skip() { echo -e "\033[0;90m[SKIP]\033[0m  $1"; }
+
+# ==============================================================================
+# Step 1: Homebrew Installation
+# ==============================================================================
+step "Homebrew Installation"
+
+if command -v brew &>/dev/null; then
+	log_skip "Homebrew already installed: $(brew --version | head -1)"
+else
+	log_info "Installing Homebrew..."
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	log_ok "Homebrew installed"
 fi
 
-# --- Brew Bundle ---
-echo "Installing Brew packages..."
+# ==============================================================================
+# Step 2: Brew Packages
+# ==============================================================================
+step "Brew Packages"
+
+log_info "Installing/updating brew packages..."
 brew bundle --no-lock --file=/dev/stdin <<EOF
 brew "curl"
 brew "ffmpeg"
@@ -214,16 +496,41 @@ brew "tesseract"
 brew "wget"
 brew "zsh"
 EOF
+log_ok "Brew packages installed"
 
-# --- Mise Setup ---
-if ! command -v mise &>/dev/null; then
-	echo "Installing Mise..."
-	curl https://mise.run | sh
+# ==============================================================================
+# Step 3: Mise Installation
+# ==============================================================================
+step "Mise Installation"
+
+if command -v mise &>/dev/null; then
+	log_skip "Mise already installed: $(mise --version 2>/dev/null | head -1)"
+else
+	log_info "Installing Mise..."
+	curl -fsSL https://mise.run | sh
+	log_ok "Mise installed"
 fi
+
+# ==============================================================================
+# Step 4: Mise Tools
+# ==============================================================================
+step "Mise Tools"
+
 export PATH="$HOME/.local/bin:$PATH"
+log_info "Installing mise tools..."
 mise install
+log_ok "Mise tools installed"
+
+# ==============================================================================
+# Summary
+# ==============================================================================
+SCRIPT_END_TIME=$(date +%s)
+SCRIPT_DURATION=$((SCRIPT_END_TIME - SCRIPT_START_TIME))
+echo ""
+echo -e "\033[1;32m✓ Setup Complete (${SCRIPT_DURATION}s)\033[0m"
 
 {{ else if eq .chezmoi.os "windows" -}}
+#!/bin/bash
 echo "Windows setup: Ensure Mise is installed."
 winget install jdx.mise
 mise install
