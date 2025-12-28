@@ -76,6 +76,7 @@ alias fr="fresh"
 alias lzd="lazydocker"
 alias lzg="lazygit"
 alias gy="gemini -y"
+alias op="opencode"
 
 # chezmoi & zsh
 alias cz="chezmoi"
