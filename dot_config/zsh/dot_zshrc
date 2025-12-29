@@ -7,8 +7,8 @@
 source ~/app/zsh/zsh-snap/znap.zsh
 
 # 1. mise
-znap eval mise 'mise activate zsh'
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+znap eval mise 'mise activate zsh'
 
 # 2. zsh plugins
 znap source marlonrichert/zsh-autocomplete      # fuzzy autocomplete and selection menu.
