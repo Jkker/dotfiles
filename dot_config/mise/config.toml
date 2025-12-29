@@ -43,6 +43,7 @@ bitwarden = "latest"
 "npm:@upstash/context7-mcp" = "latest"
 "npm:shadcn" = "latest"
 opencode = "latest"
+bun = "latest"
 
 [tools.node]
 version="lts"
