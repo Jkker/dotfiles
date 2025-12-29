@@ -484,19 +484,28 @@ fi
 step "Brew Packages"
 
 log_info "Installing/updating brew packages..."
-brew bundle --no-lock --file=/dev/stdin <<EOF
-brew "curl"
-brew "ffmpeg"
-brew "git"
-brew "graphviz"
-brew "htop"
-brew "imagemagick"
-brew "nmap"
-brew "sqlite"
-brew "tesseract"
-brew "wget"
-brew "zsh"
-EOF
+BREW_PACKAGES=(
+	"curl"
+	"ffmpeg"
+	"git"
+	"graphviz"
+	"htop"
+	"imagemagick"
+	"nmap"
+	"sqlite"
+	"tesseract"
+	"wget"
+	"zsh"
+	"tmux"
+)
+for pkg in "${BREW_PACKAGES[@]}"; do
+	if brew list --formula "$pkg" &>/dev/null; then
+		log_skip "$pkg already installed"
+	else
+		log_info "Installing $pkg..."
+		brew install "$pkg"
+	fi
+done
 log_ok "Brew packages installed"
 
 # ==============================================================================
