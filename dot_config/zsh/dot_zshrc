@@ -61,18 +61,38 @@ bindkey -M menuselect "$terminfo[kcbt]" reverse-menu-complete
 
 # 6. Aliases & Functions
 function copy() {
-	if [[ -n "$WSL_DISTRO_NAME" ]]; then
-		/mnt/c/Windows/System32/clip.exe
-	elif command -v xclip >/dev/null 2>&1; then
-		xclip -selection clipboard
-	elif command -v pbcopy >/dev/null 2>&1; then
-		pbcopy
+	local input
+	if [[ ! -t 0 ]]; then
+		input=$(cat)
 	else
-		echo "No clipboard tool found."
+		input="$*"
+	fi
+
+	# 1. WSL Check (only if NOT in SSH)
+	if [[ -n "$WSL_DISTRO_NAME" ]] && command -v clip.exe >/dev/null 2>&1 && [[ -z "$SSH_TTY" ]]; then
+		echo -n "$input" | /mnt/c/Windows/System32/clip.exe
+	# 2. X11/Wayland (only if NOT in SSH)
+	elif command -v xclip >/dev/null 2>&1 && [[ -z "$SSH_TTY" ]]; then
+		echo -n "$input" | xclip -selection clipboard
+	elif command -v wl-copy >/dev/null 2>&1 && [[ -z "$SSH_TTY" ]]; then
+		echo -n "$input" | wl-copy
+	elif command -v pbcopy >/dev/null 2>&1 && [[ -z "$SSH_TTY" ]]; then
+		echo -n "$input" | pbcopy
+	else
+		# 3. OSC 52 Fallback (SSH, Termius, Tmux)
+		local encoded=$(echo -n "$input" | base64 | tr -d '\n')
+		if [[ "$TERM" == "screen"* ]] || [[ "$TERM" == "tmux"* ]]; then
+			# Tmux requires special escape sequence
+			printf "\ePtmux;\e\e]52;c;%s\a\e\\" "$encoded"
+		else
+			# Standard OSC 52
+			printf "\e]52;c;%s\a" "$encoded"
+		fi
 	fi
 }
 
 # CLI Tools Aliases
+alias tm="tmux"
 alias fr="fresh"
 alias lzd="lazydocker"
 alias lzg="lazygit"
