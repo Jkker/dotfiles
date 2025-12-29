@@ -8,7 +8,6 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 # Tool Configs
 export MISE_GLOBAL_CONFIG_FILE="$HOME/.config/mise/config.toml"
 export PNPM_HOME="$XDG_DATA_HOME/pnpm"
-[ -d "/usr/lib/android-sdk" ] && export ANDROID_HOME="/usr/lib/android-sdk"
 
 # Editor Setup
 if [[ "$TERM_PROGRAM" == "vscode" ]]; then
@@ -25,6 +24,6 @@ typeset -U path PATH
 path=(
   "$HOME/.local/bin"
   "$XDG_DATA_HOME/mise/shims"
-  $PNPM_HOME
-  $path
+  "$PNPM_HOME"
+  "${path[@]}"
 )
