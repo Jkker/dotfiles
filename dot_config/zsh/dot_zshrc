@@ -15,6 +15,7 @@ znap source marlonrichert/zsh-autocomplete      # fuzzy autocomplete and selecti
 znap eval zoxide 'zoxide init zsh'              # zoxide for fast directory navigation.
 znap source zsh-users/zsh-completions           # additional completions.
 znap source ohmyzsh/ohmyzsh lib/git plugins/git # git plugin from ohmyzsh.
+znap source ohmyzsh/ohmyzsh plugins/tmux    # tmux plugin from ohmyzsh.
 
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)    # enable brackets highlighter
 znap source zsh-users/zsh-syntax-highlighting # syntax highlighting
