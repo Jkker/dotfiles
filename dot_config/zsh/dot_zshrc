@@ -93,6 +93,7 @@ function copy() {
 
 # CLI Tools Aliases
 alias tm="tmux"
+alias t="tmux"
 alias fr="fresh"
 alias lzd="lazydocker"
 alias lzg="lazygit"
