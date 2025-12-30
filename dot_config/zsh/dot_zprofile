@@ -1,6 +1,6 @@
 # WSL Specific Configuration (Best placed in ~/.zprofile)
 # Requires 'wslu' package (sudo apt install wslu)
-if [[ -n "$WSL_DISTRO_NAME" ]] && command -v wslvar >/dev/null; then
+if ([[ -n "$WSL_DISTRO_NAME" ]] || grep -qEi "(Microsoft|WSL)" /proc/version) && command -v wslvar >/dev/null && wslvar windir >/dev/null 2>&1; then
 
 	# --- 1. Resolve Base Windows Paths (Expensive IO, do once) ---
 	# We fetch the raw Windows path via wslvar, then convert to WSL path via wslpath
