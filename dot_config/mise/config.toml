@@ -22,7 +22,6 @@ lazygit = "latest"
 mkcert = "latest"
 # node = { version = "lts", postinstall = "corepack enable && corepack install --global pnpm@latest" }
 "npm:@dokploy/cli" = "latest"
-"npm:@fresh-editor/fresh-editor" = "latest"
 "npm:@google/gemini-cli" = "latest"
 rg = "latest"
 ruff = "latest"
@@ -44,6 +43,7 @@ bitwarden = "latest"
 "npm:shadcn" = "latest"
 opencode = "latest"
 bun = "latest"
+"github:sinelaw/fresh" = "latest"
 
 [tools.node]
-version="lts"
+version = "lts"
