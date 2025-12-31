@@ -60,7 +60,14 @@ bindkey "$terminfo[kcbt]" menu-select
 bindkey -M menuselect '^I' menu-complete
 bindkey -M menuselect "$terminfo[kcbt]" reverse-menu-complete
 
+# VSCode-like Keybindings
+bindkey '^z' undo
+bindkey '^y' redo
+bindkey ' ' magic-space
+
 # 6. Aliases & Functions
+autoload -Uz zmv
+alias -s json=jless
 function copy() {
 	local input
 	if [[ ! -t 0 ]]; then
