@@ -6,16 +6,16 @@
 	https://github.com/marlonrichert/zsh-snap.git ~/app/zsh/zsh-snap
 source ~/app/zsh/zsh-snap/znap.zsh
 
-# 1. mise
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+# 1. environment setup
+znap eval brew 'brew shellenv'
 znap eval mise 'mise activate zsh'
 
 # 2. zsh plugins
 znap source marlonrichert/zsh-autocomplete      # fuzzy autocomplete and selection menu.
-znap eval zoxide 'zoxide init zsh'              # zoxide for fast directory navigation.
+znap eval zoxide 'zoxide init zsh --cmd cd'     # zoxide for fast directory navigation.
 znap source zsh-users/zsh-completions           # additional completions.
 znap source ohmyzsh/ohmyzsh lib/git plugins/git # git plugin from ohmyzsh.
-znap source ohmyzsh/ohmyzsh plugins/tmux    # tmux plugin from ohmyzsh.
+znap source ohmyzsh/ohmyzsh plugins/tmux        # tmux plugin from ohmyzsh.
 
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets)    # enable brackets highlighter
 znap source zsh-users/zsh-syntax-highlighting # syntax highlighting
@@ -100,7 +100,6 @@ function copy() {
 }
 
 # CLI Tools Aliases
-alias tm="tmux"
 alias t="tmux"
 alias fr="fresh"
 alias lzd="lazydocker"
@@ -189,11 +188,11 @@ alias py="python"
 
 # Editor Setup
 if [[ "$TERM_PROGRAM" == "vscode" ]]; then
-  export EDITOR="code --wait"
+	export EDITOR="code --wait"
 elif command -v fresh >/dev/null 2>&1; then
-  export EDITOR="fresh"
+	export EDITOR="fresh"
 else
-  export EDITOR="nano"
+	export EDITOR="nano"
 fi
 export VISUAL="$EDITOR"
 
