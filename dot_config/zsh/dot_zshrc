@@ -106,7 +106,7 @@ alias lzd="lazydocker"
 alias lzg="lazygit"
 alias gy="gemini -y"
 alias op="opencode"
-
+alias z=cd
 function cli-agent() {
 	opencode run --agent cli "$*"
 }
