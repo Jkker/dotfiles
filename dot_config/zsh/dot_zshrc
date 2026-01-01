@@ -107,6 +107,11 @@ alias lzg="lazygit"
 alias gy="gemini -y"
 alias op="opencode"
 
+function cli-agent() {
+	opencode run --agent cli "$*"
+}
+alias "??"="cli-agent"
+
 # chezmoi & zsh
 alias cz="chezmoi"
 alias czr="chezmoi re-add"
