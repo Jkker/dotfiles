@@ -10,12 +10,21 @@ if ([[ -n "$WSL_DISTRO_NAME" ]] || grep -qEi "(Microsoft|WSL)" /proc/version) &&
 
 	# --- 2. VS Code Injection ---
 	# Adds the 'code' binary to PATH so 'code .' works
-	# Target: C:\Program Files\Microsoft VS Code\bin
-	local vscode_path="$win_prog_files/Microsoft VS Code/bin"
-	if [[ -d "$vscode_path" ]]; then
-		# Use Zsh 'path' array (automatically handles duplicates via typeset -U path)
-		path+=("$vscode_path")
-	fi
+	# Check multiple common VS Code installation paths
+	local vscode_paths=(
+		"$win_prog_files/Microsoft VS Code/bin"
+		"$win_local_appdata/Programs/Microsoft VS Code/bin"
+		"$win_prog_files/VS Code/bin"
+		"$win_local_appdata/Programs/VS Code/bin"
+	)
+	
+	for vscode_path in "${vscode_paths[@]}"; do
+		if [[ -d "$vscode_path" ]]; then
+			# Use Zsh 'path' array (automatically handles duplicates via typeset -U path)
+			path+=("$vscode_path")
+			break  # Stop after finding the first valid path
+		fi
+	done
 
 	# --- 3. Antigravity Injection ---
 	# Target: %LOCALAPPDATA%\Programs\Antigravity\bin\antigravity
