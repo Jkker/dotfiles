@@ -1,6 +1,6 @@
 ---
 description: Interprets natural language and executes CLI commands
-model: 'google/gemini-3-flash'
+model: 'google/gemini-3-flash-preview'
 permission:
   bash:
     # Mutative file operations - always ask for confirmation

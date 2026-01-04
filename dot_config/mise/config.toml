@@ -44,6 +44,8 @@ bun = "latest"
 "github:sinelaw/fresh" = "latest"
 jless = "latest"
 watchexec = "latest"
+"npm:vscode-langservers-extracted" = "latest"
+"github:rgwood/systemctl-tui" = "latest"
 
 [tools.node]
 version = "lts"

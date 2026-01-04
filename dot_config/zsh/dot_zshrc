@@ -99,6 +99,12 @@ function copy() {
 	fi
 }
 
+# Set github token env vars from github cli - these are used by other CLIs
+if command -v gh &>/dev/null && gh auth status &>/dev/null; then
+  GITHUB_TOKEN=$(gh auth token)
+  export MISE_GITHUB_TOKEN=$GITHUB_TOKEN
+fi
+
 # CLI Tools Aliases
 alias t="tmux"
 alias fr="fresh"
@@ -106,6 +112,10 @@ alias lzd="lazydocker"
 alias lzg="lazygit"
 alias gy="gemini -y"
 alias op="opencode"
+function opd() {
+	local cwd="$PWD"
+	bun run --cwd /home/jkker/code/opencode/packages/opencode dev -- "$cwd" "$@"
+}
 alias z=cd
 function cli-agent() {
 	opencode run --agent cli "$*"

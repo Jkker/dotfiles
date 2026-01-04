@@ -1,12 +1,6 @@
-[credential "https://github.com"]
-	helper =
-	helper = !gh auth git-credential
-[credential "https://gist.github.com"]
-	helper =
-	helper = !gh auth git-credential
 [user]
-	name = Jkker
 	email = j@erry.dev
+	name = Jkker
 [init]
 	defaultBranch = main
 [push]
