@@ -16,3 +16,16 @@ dl = -c diff.external=difft log -p --ext-diff
 ds = -c diff.external=difft show --ext-diff
 # `git diff` with difftastic.
 dft = -c diff.external=difft diff
+
+[credential "https://github.com"]
+	helper = 
+	helper = !/home/jkker/.local/share/mise/installs/gh/2.83.2/gh_2.83.2_linux_amd64/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/home/jkker/.local/share/mise/installs/gh/2.83.2/gh_2.83.2_linux_amd64/bin/gh auth git-credential
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true

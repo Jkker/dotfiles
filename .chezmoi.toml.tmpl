@@ -1,8 +1,13 @@
 encryption = "age"
 
 [diff]
-command = "code"
-args = ["--wait", "--diff"]
+command = "difft"
+args = ["--color", "always"]
+pager = "less -R"
+
+[edit]
+command = "sh"
+args = ["-c", "if [ \"$TERM_PROGRAM\" = \"vscode\" ]; then code --wait \"$@\"; else fresh \"$@\"; fi", "--"]
 
 [merge]
 command = "bash"
