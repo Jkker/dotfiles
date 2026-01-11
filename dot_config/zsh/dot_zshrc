@@ -24,11 +24,24 @@ ZSH_AUTOSUGGEST_STRATEGY=(history)        # only suggest from history
 znap source zsh-users/zsh-autosuggestions # fish-like ghost text suggestions.
 
 # 3. Binary Tools
+# 3.1. Global Completion Engines
 znap eval carapace 'carapace _carapace'                                    # multi-shell multi-command argument completer
 znap eval mise 'mise completions zsh'                                      # polyglot tool version manager completions
 znap eval chezmoi 'chezmoi completion zsh'                                 # dotfile manager completions
+
+# 3.2. Python Tools
 znap eval uv 'uv generate-shell-completion zsh'                            # fast Python package and project manager completions
 znap eval uvx 'uvx --generate-shell-completion zsh'                        # uv tool invoker completions
+znap eval ruff 'ruff generate-shell-completion zsh'                        # python linter/formatter completions
+
+# 3.3. CLI Utilities
+znap eval gtrash 'gtrash completion zsh'                                   # trash cli completions
+znap eval yq 'yq shell-completion zsh'                                     # yaml processor completions
+znap eval fzf 'fzf --zsh'                                                  # fuzzy finder completions & keybindings
+znap eval yazi 'find "$(mise where yazi)" -name _yazi -exec cat {} \; -quit' # file manager completions
+znap eval opencode 'opencode completion zsh'                               # agentic coding assistant completions
+znap eval usage 'usage generate completion zsh usage --usage-cmd usage'    # usage-cli completions
+
 znap source g-plane/pnpm-shell-completion pnpm-shell-completion.plugin.zsh # pnpm scripts, workspace and options completions
 # Ensure pnpm shell completion binary is downloaded
 [[ -f ~[g-plane/pnpm-shell-completion]/pnpm-shell-completion ]] || (cd ~[g-plane/pnpm-shell-completion] && ./zplug.zsh)
@@ -49,8 +62,8 @@ setopt HIST_VERIFY            # Do not execute immediately upon history expansio
 
 # 5. Keybindings
 # https://github.com/marlonrichert/zsh-edit
-WORDCHARS='~*?.' # more precise subword movement in path strings
 znap source marlonrichert/zsh-edit
+WORDCHARS='~*?.' # more precise subword movement in path strings
 
 # https://github.com/marlonrichert/zsh-autocomplete#make-tab-and-shifttab-go-to-the-menu
 # Make Tab and ShiftTab enter the menu instead of inserting a completion:
