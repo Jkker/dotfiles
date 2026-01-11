@@ -213,18 +213,33 @@ alias grbmain="git rebase origin/main"
 alias gsta="git stash push --include-untracked"
 # Open current branch in browser
 gvw() {
-	local branch=$(git_current_branch)
-	local remote_url=$(git config --get remote.origin.url)
+	local branch
+	branch=$(git_current_branch) || return 1
+	local remote_url
+	remote_url=$(git config --get remote.origin.url) || return 1
 
-	# Remove any port number from the remote URL
-	remote_url=$(echo $remote_url | sed -E 's/:[0-9]+//')
-	# Transform the remote URL from SSH format to HTTPS format if necessary
+	# Try to detect default branch on the remote
+	local default_branch
+	default_branch=$(git remote show origin 2>/dev/null | sed -n 's/.*HEAD branch: //p')
+	if [ -z "$default_branch" ]; then
+		default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/origin/@@')
+	fi
+
+	# Normalize remote URL
+	remote_url=$(echo "$remote_url" | sed -E 's/:[0-9]+//')
 	remote_url=${remote_url/ssh:\/\/git@/https:\/\/}
 	remote_url=${remote_url/git@/https:\/\/}
 	remote_url=${remote_url/.com:/\.com\/}
-	# Append the branch name to form the complete URL to the branch on the remote
-	# Assuming the remote is GitHub, GitLab, or Bitbucket
-	local branch_url="${remote_url%.git}/tree/${branch}"
+	local base_url="${remote_url%.git}"
+
+	# If the current branch is the remote's default branch (or a common default), open repo root.
+	local branch_url
+	if { [ -n "$default_branch" ] && [ "$branch" = "$default_branch" ]; } ||
+		{ [ -z "$default_branch" ] && { [ "$branch" = "main" ] || [ "$branch" = "master" ]; }; }; then
+		branch_url="$base_url"
+	else
+		branch_url="$base_url/tree/$branch"
+	fi
 
 	# Open the URL in the default browser
 	if [[ -n "$WSL_DISTRO_NAME" ]] && command -v wslview >/dev/null 2>&1; then
