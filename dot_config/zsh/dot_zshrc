@@ -227,13 +227,12 @@ gvw() {
 	local branch_url="${remote_url%.git}/tree/${branch}"
 
 	# Open the URL in the default browser
-	# if xdg-open is available (Linux), use it; if open is available (macOS), use it
-	if command -v xdg-open >/dev/null 2>&1; then
-		xdg-open "${branch_url}"
-		return
-	elif command -v open >/dev/null 2>&1; then
-		open "${branch_url}"
-		return
+	if [[ -n "$WSL_DISTRO_NAME" ]] && command -v wslview >/dev/null 2>&1; then
+		wslview "$branch_url"
+	elif [[ "$OSTYPE" == "darwin"* ]]; then
+		open "$branch_url"
+	else
+		xdg-open "$branch_url"
 	fi
 }
 # Python Aliases
