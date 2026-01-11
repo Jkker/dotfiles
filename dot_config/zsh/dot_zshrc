@@ -213,42 +213,64 @@ alias grbmain="git rebase origin/main"
 alias gsta="git stash push --include-untracked"
 # Open current branch in browser
 gvw() {
-	local branch
-	branch=$(git_current_branch) || return 1
-	local remote_url
-	remote_url=$(git config --get remote.origin.url) || return 1
+    # 1. Start the potentially slow default branch check in the background
+    # We use a temp file to store the result of the background process
+    local tmp_default
+    tmp_default=$(mktemp)
 
-	# Try to detect default branch on the remote
-	local default_branch
-	default_branch=$(git remote show origin 2>/dev/null | sed -n 's/.*HEAD branch: //p')
-	if [ -z "$default_branch" ]; then
-		default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/origin/@@')
-	fi
+    # Trap to ensure temp file cleanup on exit
+    trap "rm -f '$tmp_default'" EXIT
 
-	# Normalize remote URL
-	remote_url=$(echo "$remote_url" | sed -E 's/:[0-9]+//')
-	remote_url=${remote_url/ssh:\/\/git@/https:\/\/}
-	remote_url=${remote_url/git@/https:\/\/}
-	remote_url=${remote_url/.com:/\.com\/}
-	local base_url="${remote_url%.git}"
+    (
+        local db
+        # OPTIMIZATION: Check local ref first (Instant)
+        db=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@refs/remotes/origin/@@')
+        
+        # If local ref is missing, fallback to network check (Slow)
+        if [ -z "$db" ]; then
+            db=$(git remote show origin 2>/dev/null | sed -n 's/.*HEAD branch: //p')
+        fi
+        echo "$db" > "$tmp_default"
+    ) &
+    local pid_background=$!
 
-	# If the current branch is the remote's default branch (or a common default), open repo root.
-	local branch_url
-	if { [ -n "$default_branch" ] && [ "$branch" = "$default_branch" ]; } ||
-		{ [ -z "$default_branch" ] && { [ "$branch" = "main" ] || [ "$branch" = "master" ]; }; }; then
-		branch_url="$base_url"
-	else
-		branch_url="$base_url/tree/$branch"
-	fi
+    # 2. Run fast local operations in the foreground while waiting
+    local branch
+    branch=$(git_current_branch) || { kill $pid_background; return 1; }
+    
+    local remote_url
+    remote_url=$(git config --get remote.origin.url) || { kill $pid_background; return 1; }
 
-	# Open the URL in the default browser
-	if [[ -n "$WSL_DISTRO_NAME" ]] && command -v wslview >/dev/null 2>&1; then
-		wslview "$branch_url"
-	elif [[ "$OSTYPE" == "darwin"* ]]; then
-		open "$branch_url"
-	else
-		xdg-open "$branch_url"
-	fi
+    # Normalize remote URL (CPU bound - fast)
+    remote_url=$(echo "$remote_url" | sed -E 's/:[0-9]+//')
+    remote_url=${remote_url/ssh:\/\/git@/https:\/\/}
+    remote_url=${remote_url/git@/https:\/\/}
+    remote_url=${remote_url/.com:/\.com\/}
+    local base_url="${remote_url%.git}"
+
+    # 3. Synchronize: Wait for background job to finish and read result
+    wait $pid_background
+    local default_branch
+    default_branch=$(<"$tmp_default")
+
+    # 4. Determine final URL
+    local branch_url
+    # Logic: If current branch matches default (or is main/master), go to root
+    if { [ -n "$default_branch" ] && [ "$branch" = "$default_branch" ]; } ||
+       { [ -z "$default_branch" ] && { [ "$branch" = "main" ] || [ "$branch" = "master" ]; }; }; then
+        branch_url="$base_url"
+    else
+        branch_url="$base_url/tree/$branch"
+    fi
+
+    # 5. Open in browser
+    if [[ -n "$WSL_DISTRO_NAME" ]] && command -v wslview >/dev/null 2>&1; then
+        wslview "$branch_url"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        open "$branch_url"
+    else
+        xdg-open "$branch_url"
+    fi
 }
 # Python Aliases
 alias py="python"
