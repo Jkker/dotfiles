@@ -62,8 +62,8 @@ setopt HIST_VERIFY            # Do not execute immediately upon history expansio
 
 # 5. Keybindings
 # https://github.com/marlonrichert/zsh-edit
-znap source marlonrichert/zsh-edit
 WORDCHARS='~*?.' # more precise subword movement in path strings
+znap source marlonrichert/zsh-edit
 
 # https://github.com/marlonrichert/zsh-autocomplete#make-tab-and-shifttab-go-to-the-menu
 # Make Tab and ShiftTab enter the menu instead of inserting a completion:

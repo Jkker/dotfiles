@@ -46,6 +46,7 @@ jless = "latest"
 watchexec = "latest"
 "npm:vscode-langservers-extracted" = "latest"
 "github:rgwood/systemctl-tui" = "latest"
+"npm:vercel" = "latest"
 
 [tools.node]
 version = "lts"
