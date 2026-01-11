@@ -204,7 +204,6 @@ alias npk="rm -rf node_modules package-lock.json yarn.lock pnpm-lock.yaml **/nod
 
 # git Aliases
 alias gcl="gh repo clone"
-alias gvw="gh repo view --web"
 alias gcm="git commit -m"
 alias gcmn="git commit --no-verify -m"
 alias gcan="git commit --verbose --all --date=now --no-edit --amend --no-verify"
@@ -212,7 +211,24 @@ alias glg="git log --oneline --graph --decorate --all"
 alias gmain="git checkout main"
 alias grbmain="git rebase origin/main"
 alias gsta="git stash push --include-untracked"
-
+# Open current branch in browser
+gvw() {
+  local branch=$(git_current_branch)
+  local remote_url=$(git config --get remote.origin.url)
+  
+  # Remove any port number from the remote URL
+  remote_url=$(echo $remote_url | sed -E 's/:[0-9]+//')
+  # Transform the remote URL from SSH format to HTTPS format if necessary
+  remote_url=${remote_url/ssh:\/\/git@/https:\/\/}
+  remote_url=${remote_url/git@/https:\/\/}
+  remote_url=${remote_url/.com:/\.com\/}
+  # Append the branch name to form the complete URL to the branch on the remote
+  # Assuming the remote is GitHub, GitLab, or Bitbucket
+  local branch_url="${remote_url%.git}/tree/${branch}"
+  
+  # Open the URL in the default browser
+  open "${branch_url}"
+}
 # Python Aliases
 alias py="python"
 
