@@ -25,22 +25,22 @@ znap source zsh-users/zsh-autosuggestions # fish-like ghost text suggestions.
 
 # 3. Binary Tools
 # 3.1. Global Completion Engines
-znap eval carapace 'carapace _carapace'                                    # multi-shell multi-command argument completer
-znap eval mise 'mise completions zsh'                                      # polyglot tool version manager completions
-znap eval chezmoi 'chezmoi completion zsh'                                 # dotfile manager completions
+znap eval carapace 'carapace _carapace'    # multi-shell multi-command argument completer
+znap eval mise 'mise completions zsh'      # polyglot tool version manager completions
+znap eval chezmoi 'chezmoi completion zsh' # dotfile manager completions
 
 # 3.2. Python Tools
-znap eval uv 'uv generate-shell-completion zsh'                            # fast Python package and project manager completions
-znap eval uvx 'uvx --generate-shell-completion zsh'                        # uv tool invoker completions
-znap eval ruff 'ruff generate-shell-completion zsh'                        # python linter/formatter completions
+znap eval uv 'uv generate-shell-completion zsh'     # fast Python package and project manager completions
+znap eval uvx 'uvx --generate-shell-completion zsh' # uv tool invoker completions
+znap eval ruff 'ruff generate-shell-completion zsh' # python linter/formatter completions
 
 # 3.3. CLI Utilities
-znap eval gtrash 'gtrash completion zsh'                                   # trash cli completions
-znap eval yq 'yq shell-completion zsh'                                     # yaml processor completions
-znap eval fzf 'fzf --zsh'                                                  # fuzzy finder completions & keybindings
+znap eval gtrash 'gtrash completion zsh'                                     # trash cli completions
+znap eval yq 'yq shell-completion zsh'                                       # yaml processor completions
+znap eval fzf 'fzf --zsh'                                                    # fuzzy finder completions & keybindings
 znap eval yazi 'find "$(mise where yazi)" -name _yazi -exec cat {} \; -quit' # file manager completions
-znap eval opencode 'opencode completion zsh'                               # agentic coding assistant completions
-znap eval usage 'usage generate completion zsh usage --usage-cmd usage'    # usage-cli completions
+znap eval opencode 'opencode completion zsh'                                 # agentic coding assistant completions
+znap eval usage 'usage generate completion zsh usage --usage-cmd usage'      # usage-cli completions
 
 znap source g-plane/pnpm-shell-completion pnpm-shell-completion.plugin.zsh # pnpm scripts, workspace and options completions
 # Ensure pnpm shell completion binary is downloaded
@@ -114,8 +114,8 @@ function copy() {
 
 # Set github token env vars from github cli - these are used by other CLIs
 if command -v gh &>/dev/null && gh auth status &>/dev/null; then
-  GITHUB_TOKEN=$(gh auth token)
-  export MISE_GITHUB_TOKEN=$GITHUB_TOKEN
+	GITHUB_TOKEN=$(gh auth token)
+	export MISE_GITHUB_TOKEN=$GITHUB_TOKEN
 fi
 
 # CLI Tools Aliases
@@ -213,21 +213,28 @@ alias grbmain="git rebase origin/main"
 alias gsta="git stash push --include-untracked"
 # Open current branch in browser
 gvw() {
-  local branch=$(git_current_branch)
-  local remote_url=$(git config --get remote.origin.url)
-  
-  # Remove any port number from the remote URL
-  remote_url=$(echo $remote_url | sed -E 's/:[0-9]+//')
-  # Transform the remote URL from SSH format to HTTPS format if necessary
-  remote_url=${remote_url/ssh:\/\/git@/https:\/\/}
-  remote_url=${remote_url/git@/https:\/\/}
-  remote_url=${remote_url/.com:/\.com\/}
-  # Append the branch name to form the complete URL to the branch on the remote
-  # Assuming the remote is GitHub, GitLab, or Bitbucket
-  local branch_url="${remote_url%.git}/tree/${branch}"
-  
-  # Open the URL in the default browser
-  open "${branch_url}"
+	local branch=$(git_current_branch)
+	local remote_url=$(git config --get remote.origin.url)
+
+	# Remove any port number from the remote URL
+	remote_url=$(echo $remote_url | sed -E 's/:[0-9]+//')
+	# Transform the remote URL from SSH format to HTTPS format if necessary
+	remote_url=${remote_url/ssh:\/\/git@/https:\/\/}
+	remote_url=${remote_url/git@/https:\/\/}
+	remote_url=${remote_url/.com:/\.com\/}
+	# Append the branch name to form the complete URL to the branch on the remote
+	# Assuming the remote is GitHub, GitLab, or Bitbucket
+	local branch_url="${remote_url%.git}/tree/${branch}"
+
+	# Open the URL in the default browser
+	# if xdg-open is available (Linux), use it; if open is available (macOS), use it
+	if command -v xdg-open >/dev/null 2>&1; then
+		xdg-open "${branch_url}"
+		return
+	elif command -v open >/dev/null 2>&1; then
+		open "${branch_url}"
+		return
+	fi
 }
 # Python Aliases
 alias py="python"
